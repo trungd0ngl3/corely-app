@@ -1,6 +1,5 @@
 package com.corely.corely_backend.seed;
 
-import com.corely.corely_backend.entity.Permission;
 import com.corely.corely_backend.entity.Role;
 import com.corely.corely_backend.repository.PermissionRepository;
 import com.corely.corely_backend.repository.RoleRepository;

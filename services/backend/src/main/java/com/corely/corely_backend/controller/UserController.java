@@ -1,6 +1,5 @@
 package com.corely.corely_backend.controller;
 
-import com.corely.corely_backend.dto.request.auth.ChangePasswordRequest;
 import com.corely.corely_backend.dto.request.auth.UpdateProfileRequest;
 import com.corely.corely_backend.dto.response.ApiResponse;
 import com.corely.corely_backend.dto.response.auth.UserResponse;

@@ -1,10 +1,10 @@
 package com.corely.corely_backend.configuration;
 
-import com.corely.corely_backend.recurity.CustomJwtDecoder;
-import com.corely.corely_backend.recurity.JwtAccessDeniedHandler;
-import com.corely.corely_backend.recurity.JwtAuthenticationEntryPoint;
-import com.corely.corely_backend.recurity.OAuth2AuthenticationFailureHandler;
-import com.corely.corely_backend.recurity.OAuth2AuthenticationSuccessHandler;
+import com.corely.corely_backend.security.CustomJwtDecoder;
+import com.corely.corely_backend.security.JwtAccessDeniedHandler;
+import com.corely.corely_backend.security.JwtAuthenticationEntryPoint;
+import com.corely.corely_backend.security.OAuth2AuthenticationFailureHandler;
+import com.corely.corely_backend.security.OAuth2AuthenticationSuccessHandler;
 import com.corely.corely_backend.service.CustomOAuth2UserService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

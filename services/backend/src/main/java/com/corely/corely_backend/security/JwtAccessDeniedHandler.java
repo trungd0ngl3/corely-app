@@ -1,4 +1,4 @@
-package com.corely.corely_backend.recurity;
+package com.corely.corely_backend.security;
 
 import com.corely.corely_backend.dto.response.ApiResponse;
 import com.corely.corely_backend.exception.ErrorCode;

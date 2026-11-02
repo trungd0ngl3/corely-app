@@ -50,7 +50,9 @@ public class Product extends BaseEntity {
     @Column(name = "thumbnail_url")
     private String thumbnailUrl;
 
+    
     @Column(name = "is_active")
+    @Builder.Default
     private Boolean isActive = true;
 
     // KHAI BÁO LAZY RÕ RÀNG

@@ -1,8 +1,9 @@
 package com.corely.corely_backend.service;
 
-import com.corely.corely_backend.recurity.CustomOAuth2User;
 import com.corely.corely_backend.dto.response.auth.OAuth2UserInfo;
 import com.corely.corely_backend.entity.User;
+import com.corely.corely_backend.security.CustomOAuth2User;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;

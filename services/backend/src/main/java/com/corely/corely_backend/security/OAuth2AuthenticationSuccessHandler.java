@@ -1,8 +1,7 @@
-package com.corely.corely_backend.recurity;
+package com.corely.corely_backend.security;
 
 import com.corely.corely_backend.dto.response.auth.AuthenticateResponse;
 import com.corely.corely_backend.entity.User;
-import com.corely.corely_backend.service.AuthenticationService;
 import com.corely.corely_backend.service.JwtService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

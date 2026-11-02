@@ -1,4 +1,4 @@
-package com.corely.corely_backend.recurity;
+package com.corely.corely_backend.security;
 
 import com.corely.corely_backend.repository.InvalidatedTokenRepository;
 import com.nimbusds.jose.JOSEException;

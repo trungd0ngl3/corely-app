@@ -33,6 +33,7 @@ public class ProductVariant extends BaseEntity {
     private Integer stockQuantity;
 
     private String imageUrl;
-
+    
+    @Builder.Default
     private Boolean isActive = true;
 }

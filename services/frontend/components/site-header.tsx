@@ -9,6 +9,7 @@ import {
   Menu,
   Search,
   ShoppingCart,
+  UserRound,
   X,
 } from "lucide-react";
 import { useCart } from "./storefront-provider";
@@ -60,6 +61,9 @@ export function SiteHeader() {
         <div className="header-actions">
           <Link aria-label="Yêu thích" className="icon-button" href="/products">
             <Heart size={19} />
+          </Link>
+          <Link aria-label="Đăng nhập Corely ID" className="icon-button" href="/login">
+            <UserRound size={19} />
           </Link>
           <Link aria-label={`Giỏ hàng, ${itemCount} sản phẩm`} className="cart-button" href="/cart">
             <ShoppingCart size={19} />

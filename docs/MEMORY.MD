@@ -160,6 +160,11 @@ Other request DTOs:
 
 ## Pagination and implementation notes
 
+- Backend now forces stable JSON for pageable responses via `@EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)` configured in `SpringDataWebConfig`. This guarantees consistent structure for `Page` objects across versions.
+- Endpoints that accept Spring `Pageable` use `page`, `size`, and `sort` query parameters. Product search and review listing also accept pageable parameters; order listing endpoints are paginated.
+- Product detail and product reviews use UUID parameters, while product detail-by-slug uses a slug. Do not interchange these identifiers.
+- Check `/v3/api-docs` before implementing a new call: it is the authoritative current contract, particularly for response fields and endpoint-specific access rules.
+
 - Endpoints that accept Spring `Pageable` use `page`, `size`, and `sort`
   query parameters. Product search and review listing also accept pageable
   parameters; order listing endpoints are paginated.

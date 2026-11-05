@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Heart, Minus, Plus, ShieldCheck, Trash2, Truck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Cpu, Heart, Minus, Plus, ShieldCheck, Trash2, Truck } from "lucide-react";
 import { useCart } from "@/components/storefront-provider";
 import { formatVnd, products } from "@/lib/store-data";
 import { ProductCard } from "@/components/product-card";
@@ -38,7 +38,7 @@ export default function CartPage() {
                   else next.delete(item.id);
                   return next.size === items.length ? null : next;
                 })} type="checkbox" />
-                <Link className="cart-line-image" href={item.productId === "apex-cyberpunk" ? "/products/apex-cyberpunk" : "/products"}><Image alt={item.title} height={240} src={item.image} unoptimized width={260} /></Link>
+                <Link className="cart-line-image" href={item.productId === "apex-cyberpunk" ? "/products/apex-cyberpunk" : "/products"}>{item.image ? <Image alt={item.title} height={240} src={item.image} unoptimized width={260} /> : <Cpu aria-hidden="true" size={38} strokeWidth={0.8} />}</Link>
                 <div className="cart-line-info"><span className="product-category">CORELY / {item.productId.toUpperCase()}</span><Link href={item.productId === "apex-cyberpunk" ? "/products/apex-cyberpunk" : "/products"}>{item.title}</Link><small>{item.variant}</small><div className="cart-line-stock"><i /> CÒN HÀNG · SẴN SÀNG GIAO</div></div>
                 <div className="cart-line-controls"><div className="quantity-control"><button aria-label={`Giảm số lượng ${item.title}`} disabled={item.quantity <= 1} onClick={() => setQuantity(item.id, item.quantity - 1)} type="button"><Minus size={13} /></button><span>{item.quantity}</span><button aria-label={`Tăng số lượng ${item.title}`} onClick={() => setQuantity(item.id, item.quantity + 1)} type="button"><Plus size={13} /></button></div><b>{formatVnd(item.price * item.quantity)}</b><div className="cart-line-actions"><button aria-label={`Lưu ${item.title} vào danh sách yêu thích`} type="button"><Heart size={15} /> Lưu để mua sau</button><button aria-label={`Xóa ${item.title}`} onClick={() => removeItem(item.id)} type="button"><Trash2 size={15} /> Xóa</button></div></div>
               </article>

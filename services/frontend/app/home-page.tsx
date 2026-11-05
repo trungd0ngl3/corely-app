@@ -2,43 +2,89 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
-  BadgeCheck,
   Cpu,
-  Gauge,
-  Headphones,
-  ShieldCheck,
-  Truck,
-  Wrench,
 } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { useCart } from "@/components/storefront-provider";
-import { featuredProduct, formatVnd, products } from "@/lib/store-data";
+import {
+  fetchLandingCatalog,
+  type LandingCatalog,
+  type StoreCategory,
+} from "@/services/catalog-service";
+import { formatVnd } from "@/lib/format";
 
-const budgetRigs = [
-  { ceiling: 25, title: "Phantom Air i5", product: products[0] },
-  { ceiling: 45, title: "Frost Valkyrie White", product: products[1] },
-  { ceiling: 120, title: "Apex Cyberpunk Edition", product: featuredProduct },
-];
-
-const categories = [
-  ["Card đồ họa", "GRAPHICS / GPU", "▧"],
-  ["Bộ vi xử lý", "PROCESSORS / CPU", "⌘"],
-  ["Bo mạch chủ", "MOTHERBOARDS", "▦"],
-  ["RAM & SSD", "MEMORY / STORAGE", "◫"],
-  ["Nguồn & vỏ máy", "POWER / CASE", "⬡"],
-  ["Màn hình & Gear", "DISPLAY / GEAR", "▣"],
-];
+function categoryIcon(category: StoreCategory) {
+  if (category.slug.includes("cpu")) return "⌘";
+  if (category.slug.includes("graphics") || category.slug.includes("gpu")) return "▧";
+  if (category.slug.includes("motherboard")) return "▦";
+  if (category.slug.includes("ram") || category.slug.includes("ssd")) return "◫";
+  if (category.slug.includes("laptop")) return "▣";
+  return "⬡";
+}
 
 export default function HomePage() {
   const [budget, setBudget] = useState(35);
-  const [purpose, setPurpose] = useState("Gaming eSports / AAA");
-  const estimate = budgetRigs.find((rig) => budget <= rig.ceiling) ?? budgetRigs[2];
+  const [catalog, setCatalog] = useState<LandingCatalog>({
+    products: [],
+    categories: [],
+    totalProducts: 0,
+  });
+  const [catalogError, setCatalogError] = useState<string>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
   const { addItem } = useCart();
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchLandingCatalog(controller.signal)
+      .then((result) => {
+        setCatalog(result);
+        setIsLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        const message =
+          error instanceof Error ? error.message : "Không thể tải dữ liệu sản phẩm.";
+        console.error("Could not load the landing page catalog.", error);
+        setCatalogError(message);
+        setIsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [retryCount]);
+
+  const leadProduct = catalog.products[0];
+  const estimate = useMemo(() => {
+    const targetPrice = budget * 1_000_000;
+    return [...catalog.products].sort((left, right) => {
+      const leftPrice = left.price;
+      const rightPrice = right.price;
+      const leftWithinBudget = leftPrice <= targetPrice;
+      const rightWithinBudget = rightPrice <= targetPrice;
+      if (leftWithinBudget !== rightWithinBudget) return leftWithinBudget ? -1 : 1;
+      return leftWithinBudget
+        ? rightPrice - leftPrice
+        : leftPrice - rightPrice;
+    })[0];
+  }, [budget, catalog.products]);
+  function renderCatalogStatus() {
+    if (isLoading) {
+      return <p aria-live="polite" className="section-copy" role="status">Đang tải dữ liệu từ Corely...</p>;
+    }
+    return <p className="section-copy">Backend hiện chưa có dữ liệu cho mục này.</p>;
+  }
+
+  function retryCatalog() {
+    setIsLoading(true);
+    setCatalogError(undefined);
+    setRetryCount((count) => count + 1);
+  }
 
   return (
     <>
@@ -46,46 +92,52 @@ export default function HomePage() {
         <div className="hero-copy">
           <div className="eyebrow"><span className="eyebrow-line" /> CORELY PERFORMANCE SYSTEMS <span className="eyebrow-year">EST. 2025</span></div>
           <h1>Chiến game<br />đỉnh cao.<br /><span>Sáng tạo vô tận.</span></h1>
-          <p>Hiệu năng chuẩn xác cho mọi cuộc chơi. Khám phá những cấu hình PC được tuyển chọn và tinh chỉnh bởi đội ngũ chuyên gia Corely.</p>
+          <p>Khám phá linh kiện máy tính và thiết bị công nghệ từ danh mục được cập nhật trực tiếp bởi Corely.</p>
           <div className="hero-actions">
             <Link className="button-primary" href="/products">Khám phá cấu hình <ArrowRight size={17} /></Link>
             <Link className="button-quiet" href="#pc-estimator">Tìm cấu hình của bạn <ArrowDownRight size={17} /></Link>
           </div>
-          <div className="hero-proof"><span><BadgeCheck size={16} /> Linh kiện chính hãng</span><span><ShieldCheck size={16} /> Bảo hành 36 tháng</span></div>
         </div>
         <div className="hero-visual">
           <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
           <div className="hero-glow" />
-          <Image alt="Dàn PC Gaming Corely Apex Cyberpunk Edition" height={900} priority src={featuredProduct.image} unoptimized width={1200} />
-          <div className="hero-scan-label"><i /> PERFORMANCE SERIES <span>01 / 04</span></div>
-          <div className="hero-spec-float"><span>GPU PERFORMANCE</span><b>1440p <i>ULTRA</i></b><small>RAY TRACING READY</small></div>
-          <div className="hero-price-float"><span>APEX CYBERPUNK EDITION</span><b>{formatVnd(featuredProduct.price)}</b><Link href={featuredProduct.href}>Xem cấu hình <ArrowUpRight size={14} /></Link></div>
+          {leadProduct?.image ? (
+            <Image alt={leadProduct.name} height={900} loading="eager" src={leadProduct.image} unoptimized width={1200} />
+          ) : (
+            <div className="hero-product-placeholder" aria-label={leadProduct?.name ?? "Danh mục sản phẩm Corely"}>
+              <Cpu aria-hidden="true" size={88} strokeWidth={0.7} />
+              <span>{leadProduct?.name ?? "CORELY CATALOG"}</span>
+            </div>
+          )}
+          <div className="hero-scan-label"><i /> CORELY HARDWARE <span>01 / 04</span></div>
+          <div className="hero-spec-float"><span>LIVE CATALOG / PRODUCT</span><b>{leadProduct?.category.toUpperCase() ?? (isLoading ? "ĐANG TẢI" : "CORELY")} <i>AVAILABLE</i></b><small>{leadProduct?.description ?? leadProduct?.name ?? "DANH MỤC SẢN PHẨM"}</small></div>
+          <div className="hero-price-float"><span>{leadProduct?.name ?? "CORELY CATALOG"}</span><b>{leadProduct ? formatVnd(leadProduct.price) : "CẬP NHẬT TRỰC TIẾP"}</b><Link href="/products">Khám phá sản phẩm <ArrowUpRight size={14} /></Link></div>
         </div>
         <div className="hero-index">01 <span>/</span> 04</div>
       </section>
 
-      <section className="store-wrap stats-strip" aria-label="Cam kết Corely">
-        <div><strong>15K<span>+</span></strong><small>GAME THỦ TIN CHỌN</small></div>
-        <div><strong>36<span>TH</span></strong><small>BẢO HÀNH CHÍNH HÃNG</small></div>
-        <div><strong>24<span>/7</span></strong><small>HỖ TRỢ KỸ THUẬT</small></div>
-        <div className="stats-note"><i /> BUILT FOR PERFORMANCE <span>— NO COMPROMISE</span></div>
+      {catalogError && (
+        <div className="store-wrap empty-results" role="alert">
+          <h2>Không thể tải danh mục sản phẩm</h2>
+          <p>{catalogError}</p>
+          <button className="button-outline" onClick={retryCatalog} type="button">Thử lại</button>
+        </div>
+      )}
+
+      <section className="store-wrap stats-strip" aria-label="Tóm tắt danh mục sản phẩm">
+        <div><strong>{isLoading ? "—" : catalog.totalProducts}</strong><small>SẢN PHẨM TRONG DANH MỤC</small></div>
+        <div><strong>{isLoading ? "—" : catalog.categories.length}</strong><small>DANH MỤC SẢN PHẨM</small></div>
+        <div><strong>{estimate ? formatVnd(estimate.price) : "—"}</strong><small>GIÁ GỢI Ý THEO NGÂN SÁCH</small></div>
+        <div className="stats-note"><i />{catalogError ? "KHÔNG THỂ KẾT NỐI API" : isLoading ? "ĐANG ĐỒNG BỘ DANH MỤC" : "DỮ LIỆU TỪ CORELY API"}</div>
       </section>
 
       <section className="estimator-section" id="pc-estimator">
         <div className="store-wrap estimator-layout">
           <div>
-            <div className="eyebrow"><span className="eyebrow-line" /> CONFIGURATION ENGINE</div>
-            <h2 className="section-title">Cấu hình PC.<br /><span>Chuẩn nhu cầu.</span></h2>
-            <p className="section-copy">Chọn mục đích sử dụng và ngân sách. Corely sẽ gợi ý cỗ máy cân bằng nhất cho bạn.</p>
-            <div className="purpose-label">01 / BẠN SẼ DÙNG PC CHO VIỆC GÌ?</div>
-            <div className="purpose-options">
-              {["Gaming eSports / AAA", "Stream & sáng tạo", "Đồ họa 3D / AI Render"].map((item) => (
-                <button aria-pressed={purpose === item} className={purpose === item ? "purpose-option active" : "purpose-option"} key={item} onClick={() => setPurpose(item)} type="button">
-                  <span>{item === "Gaming eSports / AAA" ? "◈" : item === "Stream & sáng tạo" ? "◉" : "⌘"}</span>{item}
-                </button>
-              ))}
-            </div>
-            <div className="budget-head"><span>02 / NGÂN SÁCH DỰ KIẾN</span><b>{budget} <small>TRIỆU VNĐ</small></b></div>
+            <div className="eyebrow"><span className="eyebrow-line" /> BUDGET MATCH</div>
+            <h2 className="section-title">Linh kiện PC.<br /><span>Chuẩn ngân sách.</span></h2>
+            <p className="section-copy">Chọn ngân sách để tìm sản phẩm phù hợp trong danh mục Corely hiện tại.</p>
+            <div className="budget-head"><span>01 / NGÂN SÁCH DỰ KIẾN</span><b>{budget} <small>TRIỆU VNĐ</small></b></div>
             <input aria-label="Ngân sách triệu đồng" className="budget-slider" max={120} min={15} onChange={(event) => setBudget(Number(event.target.value))} step={1} type="range" value={budget} />
             <div className="range-labels"><span>15 TRIỆU</span><span>120 TRIỆU +</span></div>
             <div className="budget-tiers">
@@ -97,46 +149,41 @@ export default function HomePage() {
             </div>
           </div>
           <div className="estimate-card">
-            <div className="estimate-topline"><span>CORELY CONFIGURATION / SUGGESTED BUILD</span><span>02.01</span></div>
-            <div className="estimate-art"><span>OPTIMIZED FOR {purpose.toUpperCase()}</span><Image alt="" height={600} src={estimate.product.image} unoptimized width={800} /><div className="estimate-crosshair">+</div></div>
-            <div className="estimate-details"><div><span>GỢI Ý CẤU HÌNH</span><h3>{estimate.title}</h3></div><b>{formatVnd(estimate.product.price)}</b></div>
-            <ul className="estimate-specs">{estimate.product.specs.map((spec) => <li key={spec}><span>{spec}</span><i>INCLUDED</i></li>)}</ul>
-            <div className="estimate-actions">
-              <button className="button-primary" onClick={() => addItem({ productId: estimate.product.id, title: estimate.product.name, variant: `Gợi ý theo nhu cầu: ${purpose}`, price: estimate.product.price, image: estimate.product.image })} type="button">Thêm vào giỏ <ArrowRight size={16} /></button>
-              <Link className="button-outline" href={estimate.product.href}>Xem chi tiết</Link>
-            </div>
-            <div className="estimate-footnote">* Giá tham khảo cho cấu hình tiêu chuẩn. Có thể tùy chỉnh linh kiện.</div>
+            <div className="estimate-topline"><span>CORELY CATALOG / BUDGET MATCH</span><span>02.01</span></div>
+            {estimate ? (
+              <>
+                <div className="estimate-art"><span>PRODUCT FROM LIVE CATALOG</span>{estimate.image ? <Image alt={estimate.name} height={600} src={estimate.image} unoptimized width={800} /> : <div className="estimate-product-placeholder"><Cpu aria-hidden="true" size={64} strokeWidth={0.8} /><b>{estimate.name}</b></div>}<div className="estimate-crosshair">+</div></div>
+                <div className="estimate-details"><div><span>GỢI Ý THEO NGÂN SÁCH</span><h3>{estimate.name}</h3></div><b>{formatVnd(estimate.price)}</b></div>
+                <ul className="estimate-specs">{(estimate.specs.length ? estimate.specs : [estimate.category]).map((spec) => <li key={spec}><span>{spec}</span><i>CORELY</i></li>)}</ul>
+                <div className="estimate-actions">
+                  <button className="button-primary" onClick={() => addItem({ productId: estimate.id, title: estimate.name, variant: "Sản phẩm từ danh mục", price: estimate.price, image: estimate.image ?? "" })} type="button">Thêm vào giỏ <ArrowRight size={16} /></button>
+                  <Link className="button-outline" href="/products">Xem sản phẩm</Link>
+                </div>
+                <div className="estimate-footnote">Gợi ý dựa trên giá sản phẩm hiện có trong danh mục Corely.</div>
+              </>
+            ) : (
+              <div className="estimate-empty">{renderCatalogStatus()}</div>
+            )}
           </div>
         </div>
       </section>
 
       <section className="store-wrap content-section">
         <div className="section-heading-row"><div><div className="eyebrow"><span className="eyebrow-line" /> CURATED BY CORELY</div><h2 className="section-title">Cỗ máy được<br /><span>chọn nhiều nhất.</span></h2></div><Link className="text-link" href="/products">Tất cả cấu hình <ArrowUpRight size={16} /></Link></div>
-        <div className="product-grid home-products">{products.slice(0, 4).map((product) => <ProductCard key={product.id} product={product} />)}</div>
+        {catalog.products.length ? (
+          <div className="product-grid home-products">{catalog.products.slice(0, 4).map((product) => <ProductCard key={product.id} product={product} />)}</div>
+        ) : renderCatalogStatus()}
       </section>
 
       <section className="category-section">
         <div className="store-wrap">
           <div className="section-heading-row"><div><div className="eyebrow"><span className="eyebrow-line" /> FIND YOUR COMPONENT</div><h2 className="section-title">Linh kiện<br /><span>chính hãng.</span></h2></div><p className="section-copy category-intro">Từ một linh kiện nâng cấp đến trọn bộ chiến mã, chọn đúng thứ bạn cần.</p></div>
-          <div className="category-grid">{categories.map(([name, tag, icon]) => <Link className="category-tile" href={`/products?category=${encodeURIComponent(name)}`} key={name}><span className="category-symbol">{icon}</span><span className="category-tag">{tag}</span><b>{name}</b><ArrowUpRight className="category-arrow" size={17} /></Link>)}</div>
+          {catalog.categories.length ? (
+            <div className="category-grid">{catalog.categories.map((category) => <Link className="category-tile" href="/products" key={category.id}><span className="category-symbol">{categoryIcon(category)}</span><span className="category-tag">{category.slug.replaceAll("-", " ").toUpperCase()}</span><b>{category.name}</b><ArrowUpRight className="category-arrow" size={17} /></Link>)}</div>
+          ) : renderCatalogStatus()}
         </div>
       </section>
 
-      <section className="store-wrap benefits-section">
-        <div className="eyebrow"><span className="eyebrow-line" /> CORELY SERVICE STANDARD</div>
-        <h2 className="section-title">Không chỉ là phần cứng.<br /><span>Là sự an tâm.</span></h2>
-        <div className="benefit-grid">
-          <div><span><ShieldCheck /></span><b>Linh kiện new seal</b><p>Cam kết sản phẩm chính hãng, nguyên seal và đầy đủ hóa đơn.</p></div>
-          <div><span><Wrench /></span><b>Lắp đặt chuẩn chỉnh</b><p>Build gọn gàng, tối ưu luồng khí và kiểm tra kỹ trước khi giao.</p></div>
-          <div><span><Truck /></span><b>Giao hàng an tâm</b><p>Đóng gói chống sốc nhiều lớp, hỗ trợ giao hàng toàn quốc.</p></div>
-          <div><span><Headphones /></span><b>Hỗ trợ 24/7</b><p>Đội ngũ kỹ thuật luôn sẵn sàng đồng hành cùng bạn.</p></div>
-        </div>
-        <div className="benefit-tail"><span><Gauge size={17} /> THỰC HIỆN BÀI KIỂM TRA HIỆU NĂNG TRƯỚC KHI BÀN GIAO</span><Link href="/products">Tìm hiểu thêm <ArrowRight size={15} /></Link></div>
-      </section>
-
-      <section className="newsletter">
-        <div className="store-wrap newsletter-inner"><div><div className="eyebrow"><span className="eyebrow-line" /> CORELY DISPATCH / 001</div><h2>Nhận tín hiệu<br /><span>từ thế giới công nghệ.</span></h2><p>Cập nhật cấu hình mới, deal linh kiện và những bài test hiệu năng mới nhất.</p></div><form action="/products" className="newsletter-form"><label className="sr-only" htmlFor="newsletter-email">Email của bạn</label><input id="newsletter-email" name="q" placeholder="Email của bạn" type="email" /><button aria-label="Đăng ký nhận tin" type="submit"><ArrowRight size={19} /></button><small>KHÔNG SPAM. CHỈ CÓ THÔNG TIN ĐÁNG ĐỌC.</small></form><Cpu className="newsletter-art" size={200} strokeWidth={0.45} /></div>
-      </section>
     </>
   );
 }

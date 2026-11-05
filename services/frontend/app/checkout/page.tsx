@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, ShieldCheck, Truck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Cpu, ShieldCheck, Truck } from "lucide-react";
 import { useCart } from "@/components/storefront-provider";
 import { formatVnd } from "@/lib/store-data";
 
@@ -83,7 +83,7 @@ function CheckoutContent() {
           <aside className="order-summary checkout-summary">
             <div className="summary-title"><span>ORDER SUMMARY</span><span>{String(items.length).padStart(2, "0")} ITEMS</span></div>
             <h2>Tóm tắt đơn hàng</h2>
-            <div className="checkout-order-items">{items.map((item) => <div className="checkout-order-item" key={item.id}><Image alt="" height={90} src={item.image} unoptimized width={100} /><div><b>{item.title}</b><small>{item.variant}</small><span>Số lượng: {item.quantity}</span></div><strong>{formatVnd(item.price * item.quantity)}</strong></div>)}</div>
+            <div className="checkout-order-items">{items.map((item) => <div className="checkout-order-item" key={item.id}>{item.image ? <Image alt="" height={90} src={item.image} unoptimized width={100} /> : <span className="checkout-product-placeholder"><Cpu aria-hidden="true" size={20} strokeWidth={0.8} /></span>}<div><b>{item.title}</b><small>{item.variant}</small><span>Số lượng: {item.quantity}</span></div><strong>{formatVnd(item.price * item.quantity)}</strong></div>)}</div>
             <div className="summary-row"><span>Tạm tính</span><b>{formatVnd(subtotal)}</b></div>
             <div className="summary-row"><span>Giao hàng</span><b>{shipping ? formatVnd(shipping) : <span className="success-text">MIỄN PHÍ</span>}</b></div>
             <div className="checkout-voucher"><span>✦</span><span>Ưu đãi thanh toán online</span><b>{discount ? `-${formatVnd(discount)}` : "Không áp dụng khi COD"}</b></div>

@@ -30,38 +30,12 @@ type CartContextValue = {
 };
 
 const STORAGE_KEY = "corely-cart-v1";
-const initialItems: CartLine[] = [
-  {
-    id: "apex-cyberpunk-standard",
-    productId: "apex-cyberpunk",
-    title: "Dàn PC Gaming Corely Apex Cyberpunk Edition",
-    variant: "Core i7-14700K · 32GB DDR5 · RTX 4070 Ti SUPER",
-    price: 49080000,
-    quantity: 1,
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuA4xt_AaPUOQiBS62ZLG-gtIHeVxb8fDRwyGgtcRRZB3n4Sxp-eONiPVN9GtjtQkSLS3THtHNprRO_aJpNovfRkaKWkTWRchCES9xuMS7njq2ek0obLldbuwVHZ6QRiTIgTEAk9gA6qt8Yrw8dloD8NF5cBgRUurk5vIKFQA9KzaqrUmiqrJXbiBADe333OudDejZKuoBD3hC02dJFhfdBO-rr4_JT1Vpx3G7Tdhd70",
-  },
-  {
-    id: "rog-monitor",
-    productId: "rog-monitor",
-    title: 'Màn hình ROG Swift OLED 27" 240Hz',
-    variant: "PG27AQDM · OLED · QHD",
-    price: 21990000,
-    quantity: 1,
-    image:
-      "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: "strike-keyboard",
-    productId: "strike-keyboard",
-    title: "Bàn phím cơ Custom Corely Strike-75",
-    variant: "Gasket Mount · Switch Linear",
-    price: 3290000,
-    quantity: 1,
-    image:
-      "https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&w=900&q=85",
-  },
-];
+const initialItems: CartLine[] = [];
+const prototypeCartItemIds = new Set([
+  "apex-cyberpunk-standard",
+  "rog-monitor",
+  "strike-keyboard",
+]);
 
 function isCartLine(value: unknown): value is CartLine {
   if (!value || typeof value !== "object") return false;
@@ -89,9 +63,12 @@ function loadCart() {
     if (saved === null) return;
     const parsed: unknown = JSON.parse(saved);
     if (Array.isArray(parsed) && parsed.every(isCartLine)) {
-      cartSnapshot = parsed;
+      cartSnapshot = parsed.filter((item) => !prototypeCartItemIds.has(item.id));
+      if (cartSnapshot.length !== parsed.length) {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cartSnapshot));
+      }
     } else {
-      console.error("Saved cart data is invalid; the demo cart was restored.");
+      console.error("Saved cart data is invalid; ignoring the saved cart.");
     }
   } catch (error) {
     console.error("Could not restore the saved cart.", error);

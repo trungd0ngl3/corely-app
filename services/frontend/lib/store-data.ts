@@ -4,8 +4,8 @@ export type StoreProduct = {
   category: string;
   price: number;
   oldPrice?: number;
-  rating: string;
-  reviews: number;
+  rating?: string;
+  reviews?: number;
   badge?: string;
   description: string;
   specs: string[];
@@ -185,6 +185,4 @@ export const products: StoreProduct[] = [
 
 export const featuredProduct = products[2];
 
-export function formatVnd(value: number) {
-  return `${new Intl.NumberFormat("vi-VN").format(value)}₫`;
-}
+export { formatVnd } from "@/lib/format";

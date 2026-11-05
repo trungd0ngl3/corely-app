@@ -588,6 +588,25 @@ textarea:focus-visible {
   filter: drop-shadow(0 24px 40px rgb(0 0 0 / 45%));
 }
 
+.hero-product-placeholder {
+  width: min(100%, 560px);
+  height: 410px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  color: rgb(0 240 255 / 55%);
+  background: radial-gradient(ellipse at center, rgb(0 217 233 / 12%), transparent 62%);
+}
+
+.hero-product-placeholder span {
+  max-width: 80%;
+  color: #b5c3c8;
+  font: 600 10px var(--font-geist-mono), monospace;
+  letter-spacing: .1em;
+  text-align: center;
+}
+
 .hero-scan-label,
 .hero-spec-float,
 .hero-price-float {
@@ -696,6 +715,10 @@ textarea:focus-visible {
 .stats-strip strong {
   color: #f1f5f6;
   font: 700 29px var(--font-geist-mono), monospace;
+}
+
+.stats-strip > div:not(.stats-note):nth-child(3) strong {
+  font-size: 15px;
 }
 
 .stats-strip strong span {
@@ -909,6 +932,23 @@ textarea:focus-visible {
   mix-blend-mode: screen;
 }
 
+.estimate-product-placeholder {
+  width: 68%;
+  height: 95%;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 14px;
+  color: rgb(0 240 255 / 50%);
+  text-align: center;
+}
+
+.estimate-product-placeholder b {
+  color: #d3dfe2;
+  font-size: 11px;
+  font-weight: 500;
+}
+
 .estimate-art > span {
   position: absolute;
   z-index: 1;
@@ -1056,6 +1096,14 @@ textarea:focus-visible {
   object-fit: contain;
   mix-blend-mode: screen;
   transition: transform .3s ease;
+}
+
+.product-placeholder {
+  display: grid;
+  place-items: center;
+  width: 82%;
+  height: 90%;
+  color: rgb(0 240 255 / 52%);
 }
 
 .product-image-link {
@@ -2231,6 +2279,10 @@ textarea:focus-visible {
   mix-blend-mode: screen;
 }
 
+.cart-line-image > svg {
+  color: rgb(0 240 255 / 52%);
+}
+
 .cart-line-info > a {
   display: block;
   margin-top: 6px;
@@ -2792,6 +2844,15 @@ textarea:focus-visible {
   width: 48px;
   height: 43px;
   object-fit: contain;
+  background: #1d222b;
+}
+
+.checkout-product-placeholder {
+  width: 48px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  color: rgb(0 240 255 / 52%);
   background: #1d222b;
 }
 

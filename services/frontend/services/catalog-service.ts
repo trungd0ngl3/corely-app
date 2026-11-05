@@ -111,10 +111,11 @@ export async function fetchProductsPage(
     throw new Error("The products API returned an unexpected response.");
   }
   const page = result as any;
-  const totalElements = readNumber(page.totalElements);
-  const totalPages = readNumber(page.totalPages);
-  const number = readNumber(page.number) ?? 0;
-  const size = readNumber(page.size) ?? 0;
+  const pageMeta = isRecord(page.page) ? page.page : page;
+  const totalElements = readNumber(pageMeta.totalElements ?? page.totalElements);
+  const totalPages = readNumber(pageMeta.totalPages ?? page.totalPages);
+  const number = readNumber(pageMeta.number ?? page.number) ?? 0;
+  const size = readNumber(pageMeta.size ?? page.size) ?? 0;
   if (totalElements === undefined || totalPages === undefined) {
     throw new Error("The products API returned an unexpected pagination fields.");
   }

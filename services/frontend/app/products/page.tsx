@@ -37,7 +37,7 @@ async function ProductsPageContent({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const query = params.q?.trim().toLocaleLowerCase("vi");
+  const searchQuery = params.q?.trim().toLocaleLowerCase("vi");
   const categoryName = params.category;
   const minPrice = Number(params.min) || undefined;
   const maxPrice = Number(params.max) || undefined;
@@ -62,7 +62,7 @@ async function ProductsPageContent({
 
   const productsPage = await fetchProductsPage(
     {
-      q: query,
+      q: searchQuery,
       categoryId,
       minPrice,
       maxPrice,
@@ -75,6 +75,10 @@ async function ProductsPageContent({
 
   const visibleProducts = productsPage.content;
 
+  const queryPart = params.q ? `q=${encodeURIComponent(params.q)}&` : "";
+  const categoryPart = categoryName ? `category=${encodeURIComponent(categoryName)}&` : "";
+  const pricePart = `${minPrice ? `min=${minPrice}&` : ""}${maxPrice ? `max=${maxPrice}&` : ""}`;
+
 
   return (
     <div className="store-wrap catalog-page">
@@ -86,7 +90,7 @@ async function ProductsPageContent({
       <div className="catalog-layout">
         <aside className="catalog-sidebar">
           <div className="sidebar-heading"><SlidersHorizontal size={17} /> BỘ LỌC PHẦN CỨNG</div>
-          <div className="filter-group"><b>DANH MỤC</b>{categories.map((item) => <Link className={category === item ? "filter-link active" : "filter-link"} href={`/products?${queryPart}category=${encodeURIComponent(item)}`} key={item}><span>{item}</span>{category === item && <Check size={14} />}</Link>)}</div>
+          <div className="filter-group"><b>DANH MỤC</b>{categories.map((item) => <Link className={categoryName === item.name ? "filter-link active" : "filter-link"} href={`/products?${queryPart}category=${encodeURIComponent(item.name)}`} key={item.id}><span>{item.name}</span>{categoryName === item.name && <Check size={14} />}</Link>)}</div>
           <div className="filter-group"><b>NGÂN SÁCH</b>{[
             { label: "Dưới 15 triệu", max: 15000000 },
             { label: "15 - 30 triệu", min: 15000000, max: 30000000 },
@@ -100,7 +104,7 @@ async function ProductsPageContent({
           <div className="filter-promo"><span>CORELY / SERVICE</span><b>Build máy theo yêu cầu?</b><p>Đội ngũ kỹ thuật giúp bạn chọn cấu hình tối ưu.</p><a href="mailto:support@corely.vn">Tư vấn miễn phí <ArrowRight size={14} /></a></div>
         </aside>
         <section className="catalog-results">
-          <div className="catalog-toolbar"><span>Hiển thị <b>{visibleProducts.length}</b> sản phẩm{query ? <> cho “<b>{params.q}</b>”</> : null}</span><div className="sort-links"><ArrowDownUp size={15} /><span>Sắp xếp:</span><Link className={sort === "featured" ? "active" : ""} href={`/products?${queryPart}${categoryPart}${pricePart}sort=featured`}>Nổi bật</Link><Link className={sort === "price-asc" ? "active" : ""} href={`/products?${queryPart}${categoryPart}${pricePart}sort=price-asc`}>Giá thấp</Link><Link className={sort === "price-desc" ? "active" : ""} href={`/products?${queryPart}${categoryPart}${pricePart}sort=price-desc`}>Giá cao</Link></div></div>
+          <div className="catalog-toolbar"><span>Hiển thị <b>{visibleProducts.length}</b> sản phẩm{searchQuery ? <> cho “<b>{params.q}</b>”</> : null}</span><div className="sort-links"><ArrowDownUp size={15} /><span>Sắp xếp:</span><Link className={sort === "featured" ? "active" : ""} href={`/products?${queryPart}${categoryPart}${pricePart}sort=featured`}>Nổi bật</Link><Link className={sort === "price-asc" ? "active" : ""} href={`/products?${queryPart}${categoryPart}${pricePart}sort=price-asc`}>Giá thấp</Link><Link className={sort === "price-desc" ? "active" : ""} href={`/products?${queryPart}${categoryPart}${pricePart}sort=price-desc`}>Giá cao</Link></div></div>
           {visibleProducts.length ? (
             <div className="product-grid catalog-grid">{visibleProducts.map((product) => <ProductCard key={product.id} product={product} />)}</div>
           ) : (

@@ -1,12 +1,12 @@
+import { fetchCategories, fetchProductsPage, type CatalogProduct, type StoreCategory } from "@/services/catalog-service";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowDownUp, ArrowRight, Check, SlidersHorizontal } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
-import { products } from "@/lib/store-data";
 
 export const metadata: Metadata = {
-  title: "PC Gaming & Linh Kiện",
+  title: "PC Gaming \u0026 Linh Kiện",
   description: "Chọn PC gaming và linh kiện máy tính chính hãng tại Corely.",
 };
 
@@ -16,6 +16,7 @@ type SearchParams = {
   min?: string;
   max?: string;
   sort?: string;
+  page?: string;
 };
 
 export default function ProductsPage({
@@ -37,42 +38,43 @@ async function ProductsPageContent({
 }) {
   const params = await searchParams;
   const query = params.q?.trim().toLocaleLowerCase("vi");
-  const category = params.category;
+  const categoryName = params.category;
   const minPrice = Number(params.min) || undefined;
   const maxPrice = Number(params.max) || undefined;
   const sort = params.sort ?? "featured";
-  let visibleProducts = products.filter((product) => {
-    const matchesText =
-      !query ||
-      `${product.name} ${product.category} ${product.description} ${product.specs.join(" ")}`
-        .toLocaleLowerCase("vi")
-        .includes(query);
-    const matchesCategory =
-      !category || product.category.toLocaleLowerCase("vi") === category.toLocaleLowerCase("vi");
-    const matchesPrice =
-      (!minPrice || product.price >= minPrice) &&
-      (!maxPrice || product.price <= maxPrice);
-    return matchesText && matchesCategory && matchesPrice;
-  });
+  const page = Number(params.page) ?? 0;
 
-  if (sort === "price-asc") {
-    visibleProducts = [...visibleProducts].sort((a, b) => a.price - b.price);
-  } else if (sort === "price-desc") {
-    visibleProducts = [...visibleProducts].sort((a, b) => b.price - a.price);
-  }
+  const controller = new AbortController();
+  const signal = controller.signal;
 
-  const queryPart = params.q ? `q=${encodeURIComponent(params.q)}&` : "";
-  const categoryPart = category ? `category=${encodeURIComponent(category)}&` : "";
-  const pricePart = `${minPrice ? `min=${minPrice}&` : ""}${maxPrice ? `max=${maxPrice}&` : ""}`;
-  const categories = [
-    "PC Prebuilt",
-    "Card đồ họa",
-    "Bộ vi xử lý",
-    "Bo mạch chủ",
-    "RAM & SSD",
-    "Màn hình & Gear",
-    "Nguồn & vỏ máy",
-  ];
+  // fetch categories list
+  const categories = await fetchCategories(signal);
+  // resolve category ID for filter if name provided
+  const categoryId = categoryName
+    ? categories.find((c) => c.name.toLocaleLowerCase("vi") === categoryName.toLocaleLowerCase("vi"))?.id
+    : undefined;
+
+  const sortMap: Record<string, string | undefined> = {
+    featured: undefined,
+    "price-asc": "price,asc",
+    "price-desc": "price,desc",
+  };
+
+  const productsPage = await fetchProductsPage(
+    {
+      q: query,
+      categoryId,
+      minPrice,
+      maxPrice,
+      page,
+      size: 24,
+      sort: sortMap[sort] ?? undefined,
+    },
+    signal,
+  );
+
+  const visibleProducts = productsPage.content;
+
 
   return (
     <div className="store-wrap catalog-page">

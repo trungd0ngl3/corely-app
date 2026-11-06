@@ -52,6 +52,7 @@ export function ProductCard({
             className="add-cart-icon"
             onClick={() => addItem({
               productId: product.id,
+              slug: (product as any).slug,
               title: product.name,
               variant: "Cấu hình tiêu chuẩn",
               price: product.price,

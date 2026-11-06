@@ -11,6 +11,7 @@ import {
 export type CartLine = {
   id: string;
   productId: string;
+  slug?: string;
   title: string;
   variant: string;
   price: number;
@@ -22,7 +23,7 @@ type CartContextValue = {
   items: CartLine[];
   itemCount: number;
   subtotal: number;
-  addItem: (line: Omit<CartLine, "id" | "quantity">) => void;
+  addItem: (line: Omit<CartLine, "id" | "quantity"> & { quantity?: number }) => void;
   setQuantity: (id: string, quantity: number) => void;
   removeItem: (id: string) => void;
   removeItems: (ids: string[]) => void;
@@ -47,7 +48,8 @@ function isCartLine(value: unknown): value is CartLine {
     typeof line.variant === "string" &&
     typeof line.price === "number" &&
     typeof line.quantity === "number" &&
-    typeof line.image === "string"
+    typeof line.image === "string" &&
+    (line.slug === undefined || typeof line.slug === "string")
   );
 }
 
@@ -111,17 +113,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const value = useMemo<CartContextValue>(() => {
     const addItem: CartContextValue["addItem"] = (line) => {
       updateCart((current) => {
+        const addQty = typeof line.quantity === "number" && line.quantity > 0
+          ? line.quantity
+          : 1;
         const existing = current.find(
           (item) => item.productId === line.productId && item.variant === line.variant,
         );
         if (existing) {
           return current.map((item) =>
             item.id === existing.id
-              ? { ...item, quantity: item.quantity + 1 }
+              ? { ...item, quantity: item.quantity + addQty }
               : item,
           );
         }
-        return [...current, { ...line, id: `${line.productId}-${Date.now()}`, quantity: 1 }];
+        return [...current, { ...line, id: `${line.productId}-${Date.now()}`, quantity: addQty }];
       });
     };
 

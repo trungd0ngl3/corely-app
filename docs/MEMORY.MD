@@ -198,5 +198,7 @@ The home page uses `services/catalog-service.ts` for public catalog requests:
 - The budget selector recommends an API product by its current price; it does
   not assemble or configure a multi-part PC build. Add-to-cart still uses the
   browser's local cart and is not wired to the backend cart endpoints.
-- The separate product listing and detail experiences still contain prototype
-  data and are not part of this landing-page API integration.
+- The product listing (`/products`) and product detail (`/products/[slug]`)
+  experiences are integrated with the backend API via `services/catalog-service.ts`,
+  supporting dynamic slug routing, image galleries, live variants selection,
+  full specs tables, customer reviews, and related products recommendations.

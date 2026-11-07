@@ -8,6 +8,8 @@ import {
 } from "@/services/catalog-service";
 import { ProductDetailView } from "./product-detail-view";
 
+export const instant = false;
+
 type PageProps = {
   params: Promise<{ slug: string }>;
 };

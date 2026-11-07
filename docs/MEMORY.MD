@@ -3,6 +3,38 @@
 Frontend-facing notes for the Spring Boot API. Verified against the running
 backend's OpenAPI document on 2026-11-05.
 
+## Dependency baseline
+
+These are the direct dependencies declared by the service manifests. The
+manifests and lockfile remain the source of truth for updates and resolved
+versions.
+
+### Spring Boot backend
+
+- Java: 21; Spring Boot parent: 3.5.13.
+- Spring Boot-managed dependencies: Actuator, Data JPA, Data Redis, Security,
+  OAuth2 Client, OAuth2 Resource Server, Validation, Mail, Web, DevTools,
+  PostgreSQL, H2, Lombok, Spring Boot Test, and Spring Security Test. Their
+  versions are managed by the Spring Boot parent unless overridden in the POM.
+- Explicitly versioned dependencies: springdoc OpenAPI WebMVC UI 2.8.6,
+  Cloudinary HTTP5 2.4.0, JJWT API/implementation/Jackson 0.12.5, and MapStruct
+  1.6.3.
+- Source: `services/backend/pom.xml`.
+
+### Next.js frontend
+
+- Next.js 16.4.3, React 19.3.0, and React DOM 19.3.0.
+- Runtime dependencies: `@base-ui/react` ^1.9.0, `@hookform/resolvers`
+  ^7.0.1, `@tanstack/react-query` ^5.105.3, `axios` ^1.21.0,
+  `class-variance-authority` ^0.7.1, `cn` ^0.5.2, `lucide-react` ^1.67.0,
+  `react-hook-form` ^7.91.0, `shadcn` ^4.23.0, `tw-animate-css` ^1.4.0,
+  `zod` ^4.6.7, and `zustand` ^5.0.16.
+- Development dependencies: `@tailwindcss/turbopack` ^4, `@types/node` ^20,
+  `@types/react` ^19, `@types/react-dom` ^19, `eslint` ^9,
+  `eslint-config-next` 16.4.3, `tailwindcss` ^4, and `typescript` ^5.
+- Source: `services/frontend/package.json`; `services/frontend/package-lock.json`
+  records the resolved npm dependency tree.
+
 ## Base URL and source of truth
 
 - Local backend: `http://localhost:8080`

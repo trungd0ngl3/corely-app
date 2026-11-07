@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { AuthApiError, loginWithEmail, registerWithEmail } from "@/services/auth-service";
 import {
   ArrowRight,
   BadgeCheck,
@@ -21,6 +22,40 @@ import {
 } from "lucide-react";
 
 type AccountMode = "login" | "register";
+type AccountNotice = {
+  message: string;
+  type: "error" | "info" | "success";
+};
+
+function getAuthErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof AuthApiError) {
+    switch (error.code) {
+      case 2001:
+        return "Email hoặc mật khẩu không chính xác.";
+      case 2003:
+        return "Tài khoản này cần đăng nhập bằng nhà cung cấp mạng xã hội.";
+      case 2005:
+        return "Email chưa được xác minh. Vui lòng kiểm tra hộp thư của bạn.";
+      case 2006:
+        return "Tài khoản chưa được kích hoạt. Vui lòng xác minh email trước.";
+      case 3001:
+        return "Email này đã được đăng ký. Hãy đăng nhập hoặc dùng email khác.";
+      case 3002:
+        return "Không tìm thấy tài khoản với email này.";
+      case 1001:
+        switch (error.message) {
+          case "EMAIL_INVALID":
+            return "Địa chỉ email không hợp lệ.";
+          case "PASSWORD_TOO_SHORT":
+            return "Mật khẩu cần có ít nhất 8 ký tự.";
+          case "PHONE_INVALID":
+            return "Số điện thoại không hợp lệ.";
+        }
+    }
+  }
+
+  return error instanceof Error ? error.message : fallback;
+}
 
 const memberBenefits = [
   {
@@ -58,25 +93,77 @@ export default function AccountPage({
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState<AccountNotice | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function submitLogin(event: FormEvent<HTMLFormElement>) {
+  async function submitLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setNotice(
-      "Đăng nhập chưa khả dụng — Corely ID chưa được kết nối với dịch vụ xác thực.",
-    );
+    setNotice(null);
+    setIsSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+    const remember = formData.get("remember") === "on";
+
+    try {
+      await loginWithEmail(email, password, remember);
+      setNotice({
+        message: "Đăng nhập thành công. Phiên của bạn đã được lưu.",
+        type: "success",
+      });
+    } catch (error) {
+      setNotice({
+        message: getAuthErrorMessage(error, "Không thể đăng nhập. Vui lòng thử lại."),
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
-  function submitRegistration(event: FormEvent<HTMLFormElement>) {
+  async function submitRegistration(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setNotice(null);
     const formData = new FormData(event.currentTarget);
-    if (formData.get("password") !== formData.get("confirmPassword")) {
-      setNotice("Mật khẩu xác nhận chưa khớp. Vui lòng kiểm tra lại.");
+    const password = String(formData.get("password") ?? "");
+    if (password !== formData.get("confirmPassword")) {
+      setNotice({
+        message: "Mật khẩu xác nhận chưa khớp. Vui lòng kiểm tra lại.",
+        type: "error",
+      });
       return;
     }
-    setNotice(
-      "Đăng ký chưa khả dụng — Corely ID chưa được kết nối với dịch vụ xác thực.",
-    );
+
+    const phone = String(formData.get("phone") ?? "").replace(/[\s()-]/g, "");
+    if (!/^\+?[0-9]{7,15}$/.test(phone)) {
+      setNotice({
+        message: "Số điện thoại cần có từ 7 đến 15 chữ số, có thể bắt đầu bằng dấu +.",
+        type: "error",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const user = await registerWithEmail({
+        email: String(formData.get("email") ?? "").trim(),
+        password,
+        fullName: String(formData.get("fullName") ?? "").trim(),
+        phone,
+      });
+      setNotice({
+        message: `Đăng ký thành công cho ${user.email}. Vui lòng kiểm tra email để xác minh tài khoản trước khi đăng nhập.`,
+        type: "success",
+      });
+    } catch (error) {
+      setNotice({
+        message: getAuthErrorMessage(error, "Không thể tạo tài khoản. Vui lòng thử lại."),
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -181,7 +268,7 @@ export default function AccountPage({
               href="/login"
               onClick={() => {
                 setMode("login");
-                setNotice("");
+                setNotice(null);
               }}
               role="tab"
             >
@@ -193,7 +280,7 @@ export default function AccountPage({
               href="/register"
               onClick={() => {
                 setMode("register");
-                setNotice("");
+                setNotice(null);
               }}
               role="tab"
             >
@@ -204,15 +291,15 @@ export default function AccountPage({
           {mode === "login" ? (
             <form className="account-form" onSubmit={submitLogin}>
               <label className="account-field">
-                <span>Email / Tên đăng nhập</span>
+                <span>Địa chỉ email</span>
                 <span className="account-input-wrap">
                   <Mail aria-hidden="true" size={16} />
                   <input
-                    autoComplete="username"
-                    name="username"
+                    autoComplete="email"
+                    name="email"
                     placeholder="gamepilot@corely.vn"
                     required
-                    type="text"
+                    type="email"
                   />
                 </span>
               </label>
@@ -246,17 +333,18 @@ export default function AccountPage({
                 <button
                   className="account-text-button"
                   onClick={() =>
-                    setNotice(
-                      "Khôi phục mật khẩu sẽ khả dụng khi Corely ID được kết nối.",
-                    )
+                    setNotice({
+                      message: "Tính năng khôi phục mật khẩu chưa được tích hợp trên giao diện này.",
+                      type: "info",
+                    })
                   }
                   type="button"
                 >
                   Quên mật khẩu?
                 </button>
               </div>
-              <button className="button-primary account-submit" type="submit">
-                Đăng nhập vào Corely ID <ArrowRight size={17} />
+              <button className="button-primary account-submit" disabled={isSubmitting} type="submit">
+                {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập vào Corely ID"} <ArrowRight size={17} />
               </button>
             </form>
           ) : (
@@ -353,19 +441,29 @@ export default function AccountPage({
                   nhận thông tin bảo hành từ Corely Systems.
                 </span>
               </label>
-              <button className="button-primary account-submit" type="submit">
-                Tạo tài khoản mới ngay <ArrowRight size={17} />
+              <button className="button-primary account-submit" disabled={isSubmitting} type="submit">
+                {isSubmitting ? "Đang tạo tài khoản..." : "Tạo tài khoản mới ngay"} <ArrowRight size={17} />
               </button>
             </form>
           )}
 
-          {notice && <p className="account-notice" role="status">{notice}</p>}
+          {notice && (
+            <p
+              className={`account-notice account-notice-${notice.type}`}
+              role={notice.type === "error" ? "alert" : "status"}
+            >
+              {notice.message}
+            </p>
+          )}
 
           <div className="account-divider"><span /> HOẶC TIẾP TỤC VỚI <span /></div>
           <div className="account-socials">
             <button
               onClick={() =>
-                setNotice("Đăng nhập Google chưa được kết nối với Corely ID.")
+                setNotice({
+                  message: "Đăng nhập Google chưa được kết nối với Corely ID.",
+                  type: "info",
+                })
               }
               type="button"
             >
@@ -373,7 +471,10 @@ export default function AccountPage({
             </button>
             <button
               onClick={() =>
-                setNotice("Đăng nhập Facebook chưa được kết nối với Corely ID.")
+                setNotice({
+                  message: "Đăng nhập Facebook chưa được kết nối với Corely ID.",
+                  type: "info",
+                })
               }
               type="button"
             >

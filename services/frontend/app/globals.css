@@ -4287,6 +4287,18 @@ textarea:focus-visible {
   line-height: 1.6;
 }
 
+.account-notice-success {
+  color: #a7e8d2;
+  border-color: rgb(94 198 168 / 25%);
+  background: rgb(94 198 168 / 6%);
+}
+
+.account-notice-info {
+  color: #b7dce0;
+  border-color: rgb(0 219 233 / 25%);
+  background: rgb(0 219 233 / 6%);
+}
+
 .account-divider {
   display: flex;
   align-items: center;

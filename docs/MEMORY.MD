@@ -48,9 +48,18 @@ versions.
 
 - Login is `POST /api/v1/auth/login` with `{ "email": "...", "password": "..." }`.
   The response result contains `token`, `refreshToken`, and `isAuth`.
+- Registration is `POST /api/v1/auth/register` with `email`, `password`,
+  `fullName`, and optionally `phone` and `dateOfBirth`. The backend creates an
+  inactive, unverified local account and sends an email verification message.
+  Login requires a verified email and an active account. Passwords must be at
+  least 8 characters; phone numbers, when supplied, must contain 7-15 digits
+  and may start with `+`.
+- The frontend auth forms use `services/auth-service.ts`. Successful login
+  stores both tokens in `sessionStorage` by default, or in `localStorage` for
+  30 days when “Ghi nhớ phiên” is selected.
 - Send the access token on protected API requests as
-  `Authorization: Bearer <token>`. Refresh, logout, and introspection requests
-  send the token in a JSON body.
+  `Authorization: Bearer <access-token>`. Refresh, logout, and introspection
+  requests send the applicable token in a JSON body.
 - Auth routes, product routes, category routes, and brand routes are public.
   Other routes require authentication unless the backend grants access through
   a specific rule. Some write operations additionally require a role; for
@@ -72,7 +81,7 @@ versions.
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/api/v1/auth/register` | Register a user |
+| POST | `/api/v1/auth/register` | Register a user and send email verification |
 | POST | `/api/v1/auth/login` | Authenticate and obtain tokens |
 | POST | `/api/v1/auth/tokens/refresh` | Refresh tokens |
 | POST | `/api/v1/auth/tokens/logout` | Log out a token |

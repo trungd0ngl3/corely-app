@@ -55,7 +55,6 @@ export type ProductReview = {
 export type ProductReviewsResult = {
   content: ProductReview[];
   totalElements: number;
-  averageRating: number;
 };
 
 export type LandingCatalog = {
@@ -84,8 +83,13 @@ function readNumber(value: unknown): number | undefined {
   return undefined;
 }
 
-async function readResult(url: string, signal: AbortSignal): Promise<unknown> {
+async function readResult(
+  url: string,
+  signal: AbortSignal,
+  allowNotFound = false,
+): Promise<unknown | undefined> {
   const response = await fetch(url, { signal });
+  if (allowNotFound && response.status === 404) return undefined;
   if (!response.ok) {
     throw new Error(`Catalog request failed (${response.status} ${response.statusText}).`);
   }
@@ -123,79 +127,60 @@ export type CatalogProductPage = {
 
 export async function fetchProductBySlug(slug: string, signal?: AbortSignal): Promise<CatalogProduct | undefined> {
   const url = `${API_BASE_URL}/api/v1/products/${encodeURIComponent(slug)}`;
-  try {
-    const result = await readResult(url, signal ?? new AbortController().signal);
-    const product = toCatalogProduct(result);
-    if (product) return product;
-  } catch (err) {
-    // Check fallback for apex-cyberpunk
-  }
-
-  if (slug === "apex-cyberpunk") {
-    return getApexCyberpunkFallback();
-  }
-
-  return undefined;
+  const result = await readResult(
+    url,
+    signal ?? new AbortController().signal,
+    true,
+  );
+  if (result === undefined) return undefined;
+  const product = toCatalogProduct(result);
+  if (!product) throw new Error("The product API returned an unexpected response.");
+  return product;
 }
 
 export async function fetchProductReviews(
   productId: string,
   signal?: AbortSignal,
 ): Promise<ProductReviewsResult> {
-  if (productId === "apex-cyberpunk") {
-    return {
-      content: [
-        {
-          id: "rev-1",
-          rating: 5,
-          comment: "Máy build rất chỉn chu, tản nhiệt nước và luồng gió tối ưu cực tốt. Test FurMark 4K nhiệt độ chỉ tầm 65°C.",
-          userName: "Hoàng Nam",
-          createdAt: "2025-02-14T10:00:00",
-        },
-        {
-          id: "rev-2",
-          rating: 5,
-          comment: "Chiến Black Myth: Wukong và Cyberpunk 2077 max settings mượt mà không bị drop frame. Đóng gói 3 lớp xốp an tâm tuyệt đối.",
-          userName: "Tuấn Anh",
-          createdAt: "2025-02-01T15:30:00",
-        },
-      ],
-      totalElements: 2,
-      averageRating: 5.0,
-    };
-  }
-
   const url = `${API_BASE_URL}/api/v1/products/${encodeURIComponent(productId)}/reviews?page=0&size=20`;
-  try {
-    const result = await readResult(url, signal ?? new AbortController().signal);
-    if (!isRecord(result) || !Array.isArray((result as any).content)) {
-      return { content: [], totalElements: 0, averageRating: 5.0 };
-    }
-    const page = result as any;
-    const pageMeta = isRecord(page.page) ? page.page : page;
-    const totalElements = readNumber(pageMeta.totalElements ?? page.totalElements) ?? 0;
-    const reviews: ProductReview[] = (page.content as unknown[])
-      .filter(isRecord)
-      .map((r) => ({
-        id: readString(r.id) ?? "",
-        rating: readNumber(r.rating) ?? 5,
-        comment: readString(r.comment) ?? "",
-        userName: readString(r.userName) ?? "Khách hàng Corely",
-        avatarUrl: resolveImageUrl(r.avatarUrl),
-        createdAt: readString(r.createdAt),
-      }));
-
-    const sumRating = reviews.reduce((acc, r) => acc + r.rating, 0);
-    const averageRating = reviews.length > 0 ? Number((sumRating / reviews.length).toFixed(1)) : 5.0;
-
-    return {
-      content: reviews,
-      totalElements: totalElements || reviews.length,
-      averageRating,
-    };
-  } catch {
-    return { content: [], totalElements: 0, averageRating: 5.0 };
+  const result = await readResult(url, signal ?? new AbortController().signal);
+  if (!isRecord(result) || !Array.isArray(result.content)) {
+    throw new Error("The reviews API returned an unexpected response.");
   }
+  const pageMeta = isRecord(result.page) ? result.page : result;
+  const totalElements = readNumber(pageMeta.totalElements ?? result.totalElements);
+  if (totalElements === undefined) {
+    throw new Error("The reviews API returned unexpected pagination fields.");
+  }
+  const reviews: ProductReview[] = result.content.map((value) => {
+    if (!isRecord(value)) {
+      throw new Error("The reviews API returned an invalid review.");
+    }
+    const review = value;
+    const id = readString(review.id);
+    const rating = readNumber(review.rating);
+    const comment = readString(review.comment);
+    if (
+      !id ||
+      rating === undefined ||
+      !Number.isInteger(rating) ||
+      rating < 1 ||
+      rating > 5 ||
+      !comment
+    ) {
+      throw new Error("The reviews API returned an invalid review.");
+    }
+    return {
+      id,
+      rating,
+      comment,
+      userName: readString(review.userName) ?? "Khách hàng",
+      avatarUrl: resolveImageUrl(review.avatarUrl),
+      createdAt: readString(review.createdAt),
+    };
+  });
+
+  return { content: reviews, totalElements };
 }
 
 export async function fetchRelatedProducts(
@@ -203,17 +188,13 @@ export async function fetchRelatedProducts(
   currentProductId?: string,
   signal?: AbortSignal,
 ): Promise<CatalogProduct[]> {
-  try {
-    const page = await fetchProductsPage(
-      { categoryId, size: 8 },
-      signal ?? new AbortController().signal,
-    );
-    return page.content
-      .filter((p) => p.id !== currentProductId)
-      .slice(0, 4);
-  } catch {
-    return [];
-  }
+  const page = await fetchProductsPage(
+    { categoryId, size: 8 },
+    signal ?? new AbortController().signal,
+  );
+  return page.content
+    .filter((p) => p.id !== currentProductId)
+    .slice(0, 4);
 }
 
 export async function fetchProductsPage(
@@ -242,19 +223,18 @@ export async function fetchProductsPage(
 
   const url = `${API_BASE_URL}/api/v1/products?${query.toString()}`;
   const result = await readResult(url, signal);
-  if (!isRecord(result) || !Array.isArray((result as any).content)) {
+  if (!isRecord(result) || !Array.isArray(result.content)) {
     throw new Error("The products API returned an unexpected response.");
   }
-  const page = result as any;
-  const pageMeta = isRecord(page.page) ? page.page : page;
-  const totalElements = readNumber(pageMeta.totalElements ?? page.totalElements);
-  const totalPages = readNumber(pageMeta.totalPages ?? page.totalPages);
-  const number = readNumber(pageMeta.number ?? page.number) ?? 0;
-  const size = readNumber(pageMeta.size ?? page.size) ?? 0;
+  const pageMeta = isRecord(result.page) ? result.page : result;
+  const totalElements = readNumber(pageMeta.totalElements ?? result.totalElements);
+  const totalPages = readNumber(pageMeta.totalPages ?? result.totalPages);
+  const number = readNumber(pageMeta.number ?? result.number) ?? 0;
+  const size = readNumber(pageMeta.size ?? result.size) ?? 0;
   if (totalElements === undefined || totalPages === undefined) {
     throw new Error("The products API returned an unexpected pagination fields.");
   }
-  const products = (page.content as unknown[])
+  const products = result.content
     .map(toCatalogProduct)
     .filter((p): p is CatalogProduct => p !== undefined);
   return {
@@ -265,7 +245,6 @@ export async function fetchProductsPage(
     size,
   };
 }
-
 export async function fetchCategories(signal: AbortSignal): Promise<StoreCategory[]> {
   const result = await readResult(`${API_BASE_URL}/api/v1/categories`, signal);
   if (!Array.isArray(result)) {
@@ -290,7 +269,6 @@ export async function fetchLandingCatalog(
     totalProducts: productsResult.totalElements,
   };
 }
-
 function toProductVariant(value: unknown): ProductVariant | undefined {
   if (!isRecord(value)) return undefined;
   const id = readString(value.id);
@@ -368,63 +346,5 @@ function toCatalogProduct(value: unknown): CatalogProduct | undefined {
     images: images.length > 0 ? images : primaryImage ? [primaryImage] : [],
     variants,
     href: slug ? `/products/${slug}` : "/products",
-  };
-}
-
-function getApexCyberpunkFallback(): CatalogProduct {
-  const fallbackImage =
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuA4xt_AaPUOQiBS62ZLG-gtIHeVxb8fDRwyGgtcRRZB3n4Sxp-eONiPVN9GtjtQkSLS3THtHNprRO_aJpNovfRkaKWkTWRchCES9xuMS7njq2ek0obLldbuwVHZ6QRiTIgTEAk9gA6qt8Yrw8dloD8NF5cBgRUurk5vIKFQA9KzaqrUmiqrJXbiBADe333OudDejZKuoBD3hC02dJFhfdBO-rr4_JT1Vpx3G7Tdhd70";
-
-  return {
-    id: "apex-cyberpunk",
-    slug: "apex-cyberpunk",
-    name: "PC Gaming Corely Apex Cyberpunk Edition",
-    category: "PC Gaming",
-    price: 52990000,
-    oldPrice: 58990000,
-    rating: "5.0",
-    reviews: 64,
-    badge: "CORELY SIGNATURE BUILD",
-    description:
-      "Cỗ máy gaming hiệu năng cao được tinh chỉnh để chinh phục game AAA, stream và sáng tạo nội dung. Từng linh kiện được kiểm tra tương thích trước khi lắp ráp.",
-    specs: [
-      "CPU: Intel Core i7-14700K · 20 nhân / 28 luồng",
-      "GPU: GeForce RTX 4070 Ti SUPER · 16GB GDDR6X",
-      "Bo mạch chủ: MSI MAG Z790 TOMAHAWK MAX WIFI",
-      "RAM: 32GB DDR5 6000MHz · Dual channel",
-      "Lưu trữ: SSD NVMe Gen 4 · 1TB",
-      "Nguồn: 850W 80 Plus Gold · ATX 3.0",
-      "Hệ điều hành: Windows 11 bản quyền tùy chọn",
-    ],
-    specEntries: [
-      { label: "CPU", value: "Intel Core i7-14700K · 20 nhân / 28 luồng" },
-      { label: "GPU", value: "GeForce RTX 4070 Ti SUPER · 16GB GDDR6X" },
-      { label: "Bo mạch chủ", value: "MSI MAG Z790 TOMAHAWK MAX WIFI" },
-      { label: "RAM", value: "32GB DDR5 6000MHz · Dual channel" },
-      { label: "Lưu trữ", value: "SSD NVMe Gen 4 · 1TB" },
-      { label: "Nguồn", value: "850W 80 Plus Gold · ATX 3.0" },
-      { label: "Hệ điều hành", value: "Windows 11 bản quyền tùy chọn" },
-    ],
-    image: fallbackImage,
-    images: [fallbackImage],
-    variants: [
-      {
-        id: "apex-v1",
-        name: "Cấu hình Tiêu chuẩn (i7-14700K · 32GB · 1TB)",
-        price: 52990000,
-        stockQuantity: 10,
-      },
-      {
-        id: "apex-v2",
-        name: "Cấu hình Nâng cấp (i9-14900K · 64GB · 2TB)",
-        price: 62440000,
-        stockQuantity: 5,
-      },
-    ],
-    sku: "NX-APEX-147K",
-    brandName: "Corely Signature",
-    storeName: "Corely Flagship Store",
-    stockQuantity: 15,
-    href: "/products/apex-cyberpunk",
   };
 }

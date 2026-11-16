@@ -11,10 +11,7 @@ import {
   Cpu,
   Minus,
   Plus,
-  ShieldCheck,
   ShoppingCart,
-  Truck,
-  Wrench,
 } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { useCart } from "@/components/storefront-provider";
@@ -54,8 +51,12 @@ export function ProductDetailView({
       : 0;
 
   const currentSku = selectedVariant?.sku || product.sku || product.id.slice(0, 8).toUpperCase();
-  const currentStock = selectedVariant?.stockQuantity ?? product.stockQuantity;
+  const currentStock = selectedVariant
+    ? selectedVariant.stockQuantity
+    : product.stockQuantity;
   const isOutOfStock = currentStock !== undefined && currentStock <= 0;
+  const isStockUnknown = currentStock === undefined;
+  const isUnavailable = isOutOfStock || isStockUnknown;
 
   const allImages =
     product.images && product.images.length > 0
@@ -66,11 +67,6 @@ export function ProductDetailView({
 
   const activeImageUrl =
     selectedVariant?.image || allImages[activeImageIndex] || product.image;
-
-  const isPcBuild =
-    product.category.toLowerCase().includes("pc") ||
-    product.name.toLowerCase().includes("pc gaming") ||
-    product.slug === "apex-cyberpunk";
 
   function handleAddToCart() {
     if (isOutOfStock) return;
@@ -163,39 +159,6 @@ export function ProductDetailView({
               ))}
             </div>
           )}
-
-          {isPcBuild && (
-            <div className="performance-card">
-              <div className="performance-heading">
-                <span>REAL-WORLD PERFORMANCE</span>
-                <span>1440P / 4K ULTRA</span>
-              </div>
-              <h2>Hiệu năng đồ họa & Ray Tracing thực tế</h2>
-              <div className="game-performance">
-                {[
-                  ["Cyberpunk 2077", "118", "FPS"],
-                  ["Black Myth: Wukong", "86", "FPS"],
-                  ["Warzone 3 / BO6", "164", "FPS"],
-                  ["CS2 & Valorant", "320", "FPS"],
-                ].map(([game, fps, unit]) => (
-                  <div key={game}>
-                    <span>{game}</span>
-                    <b>
-                      {fps}
-                      <small> {unit}</small>
-                    </b>
-                    <div className="performance-meter">
-                      <i style={{ width: `${Math.min(Number(fps) / 3.2, 100)}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p>
-                * FPS tham khảo ở thiết lập đồ họa tương ứng. Kết quả thực tế phụ
-                thuộc vào độ phân giải và driver linh kiện.
-              </p>
-            </div>
-          )}
         </section>
 
         <section className="detail-info">
@@ -208,12 +171,19 @@ export function ProductDetailView({
           <h1>{product.name}</h1>
 
           <div className="detail-rating">
-            <span>★★★★★</span> {reviewsResult.averageRating.toFixed(1)}{" "}
-            <a href="#reviews">({reviewsResult.totalElements} đánh giá)</a>
+            <a href="#reviews">
+              {reviewsResult.totalElements > 0
+                ? `${reviewsResult.totalElements} đánh giá`
+                : "Chưa có đánh giá"}
+            </a>
             <i />
             <span>SKU: {currentSku}</span>
             <i />
-            {isOutOfStock ? (
+            {isStockUnknown ? (
+              <span className="detail-stock-badge out-of-stock">
+                CHƯA CẬP NHẬT KHO
+              </span>
+            ) : isOutOfStock ? (
               <span className="detail-stock-badge out-of-stock">TẠM HẾT HÀNG</span>
             ) : (
               <span className="detail-stock-badge in-stock">
@@ -222,21 +192,14 @@ export function ProductDetailView({
             )}
           </div>
 
-          <p className="detail-description">
-            {product.description ||
-              "Sản phẩm linh kiện và phần cứng máy tính chính hãng, được phân phối và bảo hành trực tiếp theo tiêu chuẩn Corely."}
-          </p>
+          {product.description && (
+            <p className="detail-description">{product.description}</p>
+          )}
 
           <div className="detail-price">
             {formatVnd(currentPrice)}
             {currentOldPrice && <del>{formatVnd(currentOldPrice)}</del>}
             {savings > 0 && <span>TIẾT KIỆM {formatVnd(savings)}</span>}
-          </div>
-
-          <div className="installment-note">
-            <span>↗</span> Trả góp 0% lãi suất: chỉ từ{" "}
-            <b>{formatVnd(Math.ceil(currentPrice / 12))}/tháng</b> qua thẻ tín
-            dụng.
           </div>
 
           {product.variants.length > 0 && (
@@ -282,7 +245,7 @@ export function ProductDetailView({
             <div className="quantity-control">
               <button
                 aria-label="Giảm số lượng"
-                disabled={quantity <= 1 || isOutOfStock}
+                disabled={quantity <= 1 || isUnavailable}
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                 type="button"
               >
@@ -292,7 +255,7 @@ export function ProductDetailView({
               <button
                 aria-label="Tăng số lượng"
                 disabled={
-                  isOutOfStock ||
+                  isUnavailable ||
                   (currentStock !== undefined && quantity >= currentStock)
                 }
                 onClick={() => setQuantity((q) => q + 1)}
@@ -311,12 +274,16 @@ export function ProductDetailView({
           <div className="detail-actions">
             <button
               className="button-primary"
-              disabled={isOutOfStock}
+              disabled={isUnavailable}
               onClick={handleAddToCart}
               type="button"
             >
               <ShoppingCart size={17} />{" "}
-              {isOutOfStock ? "Tạm hết hàng" : "Thêm vào giỏ hàng"}
+              {isStockUnknown
+                ? "Chưa có thông tin kho"
+                : isOutOfStock
+                  ? "Tạm hết hàng"
+                  : "Thêm vào giỏ hàng"}
             </button>
             <Link className="button-outline" href="/cart">
               Mở giỏ hàng <ChevronRight size={17} />
@@ -329,30 +296,6 @@ export function ProductDetailView({
               công!
             </div>
           )}
-
-          <div className="detail-promises">
-            <div>
-              <ShieldCheck size={17} />
-              <span>
-                <b>Bảo hành chính hãng</b>
-                <small>36 tháng toàn quốc</small>
-              </span>
-            </div>
-            <div>
-              <Wrench size={17} />
-              <span>
-                <b>Kiểm tra kỹ thuật</b>
-                <small>Kiểm định trước khi giao</small>
-              </span>
-            </div>
-            <div>
-              <Truck size={17} />
-              <span>
-                <b>Giao hàng an tâm</b>
-                <small>Đóng gói chống sốc 3 lớp</small>
-              </span>
-            </div>
-          </div>
 
           <a className="detail-contact" href="mailto:support@corely.vn">
             Cần tư vấn cấu hình & tương thích? Liên hệ kỹ thuật viên Corely{" "}
@@ -396,18 +339,13 @@ export function ProductDetailView({
           <div>
             <span>Tình trạng kho</span>
             <b>
-              {isOutOfStock
+              {isStockUnknown
+                ? "Chưa có thông tin kho"
+                : isOutOfStock
                 ? "Hết hàng"
-                : currentStock !== undefined
-                ? `Còn hàng (${currentStock} sản phẩm)`
-                : "Còn hàng"}
+                : `Còn hàng (${currentStock} sản phẩm)`}
             </b>
           </div>
-          <div>
-            <span>Chế độ bảo hành</span>
-            <b>36 tháng chính hãng tại Corely</b>
-          </div>
-
           {product.specEntries &&
             product.specEntries.map((spec) => (
               <div key={spec.label}>
@@ -420,7 +358,7 @@ export function ProductDetailView({
 
       <section className="content-section" id="reviews">
         <div className="eyebrow">
-          <span className="eyebrow-line" /> VERIFIED REVIEWS
+          <span className="eyebrow-line" /> CUSTOMER REVIEWS
         </div>
         <h2 className="section-title">
           Đánh giá từ <span>khách hàng.</span>
@@ -428,17 +366,10 @@ export function ProductDetailView({
 
         <div className="reviews-summary">
           <div className="reviews-score">
-            {reviewsResult.averageRating.toFixed(1)}
+            {reviewsResult.totalElements}
           </div>
           <div className="reviews-score-info">
-            <div className="reviews-stars">
-              {"★".repeat(Math.round(reviewsResult.averageRating))}
-              {"☆".repeat(5 - Math.round(reviewsResult.averageRating))}
-            </div>
-            <div className="reviews-count">
-              Dựa trên {reviewsResult.totalElements} lượt đánh giá thực tế từ
-              người dùng đã mua hàng
-            </div>
+            <div className="reviews-count">đánh giá</div>
           </div>
         </div>
 
@@ -471,8 +402,7 @@ export function ProductDetailView({
           </div>
         ) : (
           <div className="reviews-empty">
-            Chưa có đánh giá nào cho sản phẩm này. Hãy là người đầu tiên trải
-            nghiệm và để lại nhận xét!
+            Chưa có đánh giá nào cho sản phẩm này.
           </div>
         )}
       </section>
@@ -482,12 +412,12 @@ export function ProductDetailView({
           <div className="section-heading-row">
             <div>
               <div className="eyebrow">
-                <span className="eyebrow-line" /> COMPLETE YOUR SETUP
+                <span className="eyebrow-line" /> SẢN PHẨM CÙNG DANH MỤC
               </div>
               <h2 className="section-title">
-                Linh kiện & thiết bị
+                Sản phẩm
                 <br />
-                <span>thường mua cùng.</span>
+                <span>cùng danh mục.</span>
               </h2>
             </div>
             <Link

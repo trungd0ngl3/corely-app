@@ -243,3 +243,8 @@ The home page uses `services/catalog-service.ts` for public catalog requests:
   experiences are integrated with the backend API via `services/catalog-service.ts`,
   supporting dynamic slug routing, image galleries, live variants selection,
   full specs tables, customer reviews, and related products recommendations.
+- Product detail data comes from the live product, review, and category-filtered
+  product endpoints. Missing slugs return the not-found page; API errors are not
+  replaced with demo product/review data. The API does not expose an aggregate
+  review rating or warranty/performance claims, so the detail page does not
+  invent those values.

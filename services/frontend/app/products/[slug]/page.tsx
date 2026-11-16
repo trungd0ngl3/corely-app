@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { notFound } from "next/navigation";
 import {
   fetchProductBySlug,
   fetchProductReviews,
@@ -31,7 +30,7 @@ export async function generateMetadata({
     title: `${product.name} | Corely`,
     description:
       product.description ||
-      `Mua ${product.name} chính hãng giá tốt tại Corely. Bảo hành 36 tháng.`,
+      `Thông tin chi tiết về ${product.name} tại Corely.`,
   };
 }
 
@@ -40,27 +39,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await fetchProductBySlug(slug);
 
   if (!product) {
-    return (
-      <div className="store-wrap catalog-page">
-        <div className="breadcrumbs">
-          <Link href="/">Trang chủ</Link>
-          <span>/</span>
-          <Link href="/products">Sản phẩm</Link>
-          <span>/</span>
-          <span>Không tìm thấy</span>
-        </div>
-        <div className="empty-results" style={{ margin: "60px auto", maxWidth: "600px" }}>
-          <span>⌕</span>
-          <h2>Không tìm thấy sản phẩm</h2>
-          <p>
-            Sản phẩm với đường dẫn “{slug}” không tồn tại hoặc đã ngừng kinh doanh. Vui lòng kiểm tra lại đường dẫn hoặc duyệt qua danh mục phần cứng.
-          </p>
-          <Link className="button-primary" href="/products">
-            Khám phá danh sách sản phẩm <ArrowRight size={16} />
-          </Link>
-        </div>
-      </div>
-    );
+    notFound();
   }
 
   const [reviewsResult, relatedProducts] = await Promise.all([

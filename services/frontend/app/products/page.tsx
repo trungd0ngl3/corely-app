@@ -6,7 +6,7 @@ import { ArrowDownUp, ArrowRight, Check, SlidersHorizontal } from "lucide-react"
 import { ProductCard } from "@/components/product-card";
 
 export const metadata: Metadata = {
-  title: "PC Gaming \u0026 Linh Kiện",
+  title: "PC Gaming & Linh Kiện | Corely",
   description: "Chọn PC gaming và linh kiện máy tính chính hãng tại Corely.",
 };
 

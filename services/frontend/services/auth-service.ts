@@ -116,6 +116,10 @@ export function getGoogleLoginUrl(): string {
   return `${API_BASE_URL}/oauth2/authorization/google`;
 }
 
+export function getFacebookLoginUrl(): string {
+  return `${API_BASE_URL}/oauth2/authorization/facebook`;
+}
+
 export function completeGoogleLogin(token: string, refreshToken: string): void {
   saveAuthSession(readAuthResponse({ token, refreshToken }), false);
 }

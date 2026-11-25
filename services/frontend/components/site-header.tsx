@@ -62,7 +62,7 @@ export function SiteHeader() {
           <Link aria-label="Yêu thích" className="icon-button" href="/products">
             <Heart size={19} />
           </Link>
-          <Link aria-label="Đăng nhập Corely ID" className="icon-button" href="/login">
+          <Link aria-label="Tài khoản Corely" className="icon-button" href="/profile">
             <UserRound size={19} />
           </Link>
           <Link aria-label={`Giỏ hàng, ${itemCount} sản phẩm`} className="cart-button" href="/cart">
@@ -78,6 +78,7 @@ export function SiteHeader() {
         <Link href="/products?category=B%E1%BB%99%20vi%20x%E1%BB%AD%20l%C3%BD">CPU & Bo mạch chủ</Link>
         <Link href="/products?category=RAM%20%26%20SSD">RAM & SSD</Link>
         <Link href="/products">Màn hình & Gear</Link>
+        <Link className="mobile-account-link" href="/profile">Tài khoản Corely</Link>
         <Link className="nav-deal" href="/products">Giờ vàng săn deal <span>↗</span></Link>
       </nav>
     </header>

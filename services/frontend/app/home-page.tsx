@@ -156,7 +156,7 @@ export default function HomePage() {
                 <div className="estimate-details"><div><span>GỢI Ý THEO NGÂN SÁCH</span><h3>{estimate.name}</h3></div><b>{formatVnd(estimate.price)}</b></div>
                 <ul className="estimate-specs">{(estimate.specs.length ? estimate.specs : [estimate.category]).map((spec) => <li key={spec}><span>{spec}</span><i>CORELY</i></li>)}</ul>
                 <div className="estimate-actions">
-                  <button className="button-primary" disabled={estimate.variants.length > 0} onClick={() => { void addItem({ productId: estimate.id }); }} type="button">Thêm vào giỏ <ArrowRight size={16} /></button>
+                  <button className="button-primary" disabled={estimate.variants.length > 0} onClick={() => { void addItem({ productId: estimate.id, title: estimate.name }); }} type="button">Thêm vào giỏ <ArrowRight size={16} /></button>
                   <Link className="button-outline" href="/products">Xem sản phẩm</Link>
                 </div>
                 <div className="estimate-footnote">Gợi ý dựa trên giá sản phẩm hiện có trong danh mục Corely.</div>

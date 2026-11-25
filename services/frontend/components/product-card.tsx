@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { ArrowUpRight, Cpu, Heart, ShoppingCart, Star } from "lucide-react";
+import { ArrowUpRight, Check, Cpu, Heart, ShoppingCart, Star } from "lucide-react";
 import { formatVnd } from "@/lib/format";
 import type { StoreProduct } from "@/lib/store-data";
 import type { CatalogProduct } from "@/services/catalog-service";
@@ -16,8 +16,30 @@ export function ProductCard({
 }) {
   const { addItem } = useCart();
   const [favorite, setFavorite] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
   const catalogProduct = "variants" in product;
-  const requiresVariantSelection = catalogProduct && product.variants.length > 0;
+  // Pick the first active variant automatically; fall back to first variant if none active
+  const defaultVariant = catalogProduct
+    ? (product.variants.find((v) => v.isActive !== false) ?? product.variants[0])
+    : undefined;
+  const canAddDirectly = catalogProduct;
+
+  async function handleAddToCart(event: React.MouseEvent) {
+    event.preventDefault();
+    if (isAdding || !canAddDirectly) return;
+    setIsAdding(true);
+    const success = await addItem({
+      productId: product.id,
+      variantId: defaultVariant?.id,
+      title: product.name,
+    });
+    setIsAdding(false);
+    if (success) {
+      setJustAdded(true);
+      setTimeout(() => setJustAdded(false), 1500);
+    }
+  }
 
   return (
     <article className="product-card">
@@ -50,13 +72,13 @@ export function ProductCard({
         <div className="product-price-row">
           <div><strong>{formatVnd(product.price)}</strong>{product.oldPrice && <del>{formatVnd(product.oldPrice)}</del>}</div>
           <button
-            aria-label={`Thêm ${product.name} vào giỏ hàng`}
-            className="add-cart-icon"
-            disabled={!catalogProduct || requiresVariantSelection}
-            onClick={() => { void addItem({ productId: product.id }); }}
+            aria-label={justAdded ? `Đã thêm ${product.name} vào giỏ hàng` : `Thêm ${product.name} vào giỏ hàng`}
+            className={`add-cart-icon ${justAdded ? "just-added" : ""}`}
+            disabled={!canAddDirectly || isAdding}
+            onClick={handleAddToCart}
             type="button"
           >
-            <ShoppingCart size={17} />
+            {justAdded ? <Check size={16} /> : <ShoppingCart size={17} />}
           </button>
         </div>
       </div>

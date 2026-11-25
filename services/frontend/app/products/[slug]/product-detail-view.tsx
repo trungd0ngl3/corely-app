@@ -56,7 +56,8 @@ export function ProductDetailView({
     : product.stockQuantity;
   const isOutOfStock = currentStock !== undefined && currentStock <= 0;
   const isStockUnknown = currentStock === undefined;
-  const isUnavailable = isOutOfStock || isStockUnknown;
+  // Only block the button when stock is explicitly 0; unknown stock = assume available
+  const isUnavailable = isOutOfStock;
 
   const allImages =
     product.images && product.images.length > 0
@@ -74,6 +75,7 @@ export function ProductDetailView({
       productId: product.id,
       variantId: selectedVariantId ?? undefined,
       quantity,
+      title: product.name,
     });
 
     if (!added) return;

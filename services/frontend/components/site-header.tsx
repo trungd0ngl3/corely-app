@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   Cpu,
   Heart,
@@ -16,9 +16,17 @@ import { useCart } from "./storefront-provider";
 
 export function SiteHeader() {
   const router = useRouter();
-  const { itemCount } = useCart();
+  const { itemCount, lastAddedAt } = useCart();
   const [query, setQuery] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isBouncing, setIsBouncing] = useState(false);
+
+  useEffect(() => {
+    if (!lastAddedAt) return;
+    setIsBouncing(true);
+    const timer = setTimeout(() => setIsBouncing(false), 700);
+    return () => clearTimeout(timer);
+  }, [lastAddedAt]);
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,14 +36,15 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="store-header">
+    <>
       <div className="store-topline">
         <div className="store-wrap topline-inner">
           <span>GIAO HÀNG TỐC ĐỘ CAO · BẢO HÀNH CHÍNH HÃNG 36 THÁNG</span>
           <span className="topline-status"><i /> HỆ THỐNG ĐANG HOẠT ĐỘNG</span>
         </div>
       </div>
-      <div className="store-wrap header-main">
+      <header className="store-header">
+        <div className="store-wrap header-main">
         <button
           aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
           className="icon-button mobile-menu-button"
@@ -65,10 +74,14 @@ export function SiteHeader() {
           <Link aria-label="Tài khoản Corely" className="icon-button" href="/profile">
             <UserRound size={19} />
           </Link>
-          <Link aria-label={`Giỏ hàng, ${itemCount} sản phẩm`} className="cart-button" href="/cart">
+          <Link
+            aria-label={`Giỏ hàng, ${itemCount} sản phẩm`}
+            className={`cart-button ${isBouncing ? "cart-bounce" : ""}`}
+            href="/cart"
+          >
             <ShoppingCart size={19} />
             <span>Giỏ hàng</span>
-            <b>{itemCount}</b>
+            <b className={isBouncing ? "badge-pop" : ""}>{itemCount}</b>
           </Link>
         </div>
       </div>
@@ -81,6 +94,7 @@ export function SiteHeader() {
         <Link className="mobile-account-link" href="/profile">Tài khoản Corely</Link>
         <Link className="nav-deal" href="/products">Giờ vàng săn deal <span>↗</span></Link>
       </nav>
-    </header>
+      </header>
+    </>
   );
 }

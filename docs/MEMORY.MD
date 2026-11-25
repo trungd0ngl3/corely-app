@@ -1,0 +1,273 @@
+# Corely API reference
+
+Frontend-facing notes for the Spring Boot API. Verified against the running
+backend's OpenAPI document on 2026-11-05.
+
+## Dependency baseline
+
+These are the direct dependencies declared by the service manifests. The
+manifests and lockfile remain the source of truth for updates and resolved
+versions.
+
+### Spring Boot backend
+
+- Java: 21; Spring Boot parent: 3.5.13.
+- Spring Boot-managed dependencies: Actuator, Data JPA, Data Redis, Security,
+  OAuth2 Client, OAuth2 Resource Server, Validation, Mail, Web, DevTools,
+  PostgreSQL, H2, Lombok, Spring Boot Test, and Spring Security Test. Their
+  versions are managed by the Spring Boot parent unless overridden in the POM.
+- Explicitly versioned dependencies: springdoc OpenAPI WebMVC UI 2.8.6,
+  Cloudinary HTTP5 2.4.0, JJWT API/implementation/Jackson 0.12.5, and MapStruct
+  1.6.3.
+- Source: `services/backend/pom.xml`.
+
+### Next.js frontend
+
+- Next.js 16.4.3, React 19.3.0, and React DOM 19.3.0.
+- Runtime dependencies: `@base-ui/react` ^1.9.0, `@hookform/resolvers`
+  ^7.0.1, `@tanstack/react-query` ^5.105.3, `axios` ^1.21.0,
+  `class-variance-authority` ^0.7.1, `cn` ^0.5.2, `lucide-react` ^1.67.0,
+  `react-hook-form` ^7.91.0, `shadcn` ^4.23.0, `tw-animate-css` ^1.4.0,
+  `zod` ^4.6.7, and `zustand` ^5.0.16.
+- Development dependencies: `@tailwindcss/turbopack` ^4, `@types/node` ^20,
+  `@types/react` ^19, `@types/react-dom` ^19, `eslint` ^9,
+  `eslint-config-next` 16.4.3, `tailwindcss` ^4, and `typescript` ^5.
+- Source: `services/frontend/package.json`; `services/frontend/package-lock.json`
+  records the resolved npm dependency tree.
+
+## Base URL and source of truth
+
+- Local backend: `http://localhost:8080`
+- Most endpoints are under `/api/v1`.
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- Use the live OpenAPI document for exact response DTOs and changes not listed
+  here.
+
+## Authentication and response format
+
+- Login is `POST /api/v1/auth/login` with `{ "email": "...", "password": "..." }`.
+  The response result contains `token`, `refreshToken`, and `isAuth`.
+- Registration is `POST /api/v1/auth/register` with `email`, `password`,
+  `fullName`, and optionally `phone` and `dateOfBirth`. The backend creates an
+  inactive, unverified local account and sends an email verification message.
+  Login requires a verified email and an active account. Passwords must be at
+  least 8 characters; phone numbers, when supplied, must contain 7-15 digits
+  and may start with `+`.
+- The frontend auth forms use `services/auth-service.ts`. Successful login
+  stores both tokens in `sessionStorage` by default, or in `localStorage` for
+  30 days when “Ghi nhớ phiên” is selected.
+- Send the access token on protected API requests as
+  `Authorization: Bearer <access-token>`. Refresh, logout, and introspection
+  requests send the applicable token in a JSON body.
+- Auth routes, product routes, category routes, and brand routes are public.
+  Other routes require authentication unless the backend grants access through
+  a specific rule. Some write operations additionally require a role; for
+  example, product creation, update, and deletion require `ADMIN` or `SELLER`.
+- Google and Facebook OAuth2 login routes are public:
+  `GET /oauth2/authorization/google` and
+  `GET /oauth2/authorization/facebook`.
+- OAuth2 success redirects to the frontend URL at
+  `/auth/oauth2/redirect#token=<access-token>&refreshToken=<refresh-token>`.
+  The frontend callback stores the tokens in `sessionStorage` and redirects to
+  `/`. Failure redirects to `/auth/oauth2/failed`.
+- The frontend OAuth buttons use `getGoogleLoginUrl()` and
+  `getFacebookLoginUrl()` in `services/auth-service.ts`.
+- The backend `CustomOAuth2UserService` maps Google (`id`, `email`, `name`,
+  `picture`) and Facebook (`id`, `email`, `name`, `picture.data.url`) accounts
+  through `AuthenticationService.processOAuth2User(...)`. OAuth2 registration
+  credentials and provider endpoints belong in the active Spring profile;
+  `application.yaml` currently contains the shared Google provider metadata,
+  while the development profile contains Google/Facebook client registrations.
+- `app.frontend-url` controls both the OAuth2 success/failure redirects and the
+  backend CORS allowed origin. Keep it aligned with the Next.js origin.
+- Most JSON endpoints use the envelope
+  `{ "code": ..., "message": ..., "result": ... }`. Catalog reads currently
+  return `code: 0`; other controller helpers may return `code: 1000`. Use the
+  HTTP status and `result` shape to determine whether a request succeeded; do
+  not assume one success code. The `result` can be absent/null for void
+  operations. Do not expect this envelope from the payment endpoints: they
+  return a raw string or payment DTO.
+- Send JSON request bodies with `Content-Type: application/json`. Image upload
+  is `multipart/form-data` with a `file` part and optional `folder` query
+  parameter.
+
+## Endpoint index
+
+### Authentication and account
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/v1/auth/register` | Register a user and send email verification |
+| POST | `/api/v1/auth/login` | Authenticate and obtain tokens |
+| POST | `/api/v1/auth/tokens/refresh` | Refresh tokens |
+| POST | `/api/v1/auth/tokens/logout` | Log out a token |
+| POST | `/api/v1/auth/tokens/introspect` | Check a token |
+| GET | `/api/v1/auth/verify-email?token=...` | Verify an email address |
+| POST | `/api/v1/auth/resend-verification` | Resend verification email |
+| POST | `/api/v1/auth/forgot-password` | Start password recovery |
+| POST | `/api/v1/auth/reset-password` | Reset password with token |
+| PATCH | `/api/v1/auth/change-password` | Change password |
+| GET, PUT, DELETE | `/api/v1/users/me` | Read, update, or delete current user |
+| GET | `/oauth2/authorization/{provider}` | Start Google or Facebook OAuth2 login |
+| GET | `/login/oauth2/code/{provider}` | OAuth2 callback handled by Spring Security |
+
+### Products, categories, brands, and store
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/v1/products` | Search/filter products; accepts `q`, `categoryId`, `brandId`, `storeId`, `minPrice`, `maxPrice`, and pageable query parameters |
+| GET | `/api/v1/products/{slug}` | Get product by slug |
+| POST | `/api/v1/products` | Create product (`ADMIN` or `SELLER`) |
+| PUT, DELETE | `/api/v1/products/{id}` | Update or delete product by UUID (`ADMIN` or `SELLER`) |
+| GET, POST | `/api/v1/products/{productId}/reviews` | List paginated reviews or create a review |
+| PUT, DELETE | `/api/v1/reviews/{id}` | Update or delete a review by UUID |
+| GET, POST | `/api/v1/categories` | List or create categories |
+| GET | `/api/v1/categories/{slug}` | Get category by slug |
+| PUT, DELETE | `/api/v1/categories/{id}` | Update or delete category by UUID |
+| GET, POST | `/api/v1/brands` | List or create brands |
+| GET | `/api/v1/brands/{slug}` | Get brand by slug |
+| PUT, DELETE | `/api/v1/brands/{id}` | Update or delete brand by UUID |
+| GET, PUT | `/api/v1/store` | Read or update the store |
+
+### Cart and wishlist
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET, DELETE | `/api/v1/cart` | Read or clear cart |
+| POST, PUT | `/api/v1/cart/items` | Add or update an item |
+| DELETE | `/api/v1/cart/items/{productId}?variantId=...` | Remove item (variant ID is optional) |
+| GET | `/api/v1/cart/stock-check` | Check cart item stock |
+| POST, DELETE | `/api/v1/cart/voucher` | Apply voucher (`voucherCode`) or remove it |
+| GET | `/api/v1/wishlist` | Read wishlist |
+| POST, DELETE | `/api/v1/wishlist/{productId}` | Add or remove a product |
+
+### Addresses, checkout, orders, and payments
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET, POST | `/api/v1/addresses` | List or create addresses |
+| PUT, DELETE | `/api/v1/addresses/{id}` | Update or delete address by UUID |
+| PATCH | `/api/v1/addresses/{id}/default` | Set default address |
+| GET | `/api/v1/checkout-config/shipping-methods` | List shipping methods |
+| GET | `/api/v1/checkout-config/payment-methods` | List payment methods |
+| POST | `/api/v1/orders` | Create order |
+| GET | `/api/v1/orders/my-order` | List current user's paginated orders |
+| GET | `/api/v1/orders/store/{storeId}` | List store's paginated orders |
+| PUT | `/api/v1/orders/{orderId}/status` | Update order status |
+| POST | `/api/v1/payments/{orderId}/vnpay-url` | Create VNPay URL (raw string response) |
+| GET | `/api/v1/payments/vnpay/callback` | VNPay callback; accepts `vnp_*` query fields (raw payment DTO response) |
+| GET | `/api/v1/payments/order/{orderId}` | Get payment for order (raw payment DTO response) |
+
+### Administration, uploads, and utility
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/v1/admin/dashboard/summary` | Dashboard summary |
+| GET | `/api/v1/admin/dashboard/revenues?days=...` | Revenue chart |
+| GET | `/api/v1/admin/dashboard/products/top?limit=...` | Top products |
+| GET | `/api/v1/admin/dashboard/Order?limit=...` | Dashboard orders (path capitalization is intentional) |
+| GET, POST | `/api/v1/roles` | List or create roles |
+| DELETE | `/api/v1/roles/{name}` | Delete role |
+| POST | `/upload/image?folder=...` | Upload image; `folder` defaults to `GENERAL` |
+| DELETE | `/upload/image/{publicId}` | Delete uploaded image |
+| GET | `/api/test/mail` | Backend mail test endpoint |
+
+## Common request shapes
+
+Fields below are from the live OpenAPI DTOs. Check that document for required
+fields, validation constraints, enums, nested types, and response schemas.
+
+```json
+// POST /api/v1/auth/register
+{
+  "email": "user@example.com",
+  "password": "...",
+  "fullName": "...",
+  "dateOfBirth": "YYYY-MM-DD",
+  "phone": "..."
+}
+```
+
+```json
+// POST /api/v1/cart/items and PUT /api/v1/cart/items
+{ "productId": "UUID", "variantId": "UUID", "quantity": 1 }
+```
+
+```json
+// POST /api/v1/orders
+{
+  "storeId": "UUID",
+  "shippingAddress": "...",
+  "shippingMethod": "...",
+  "paymentMethod": "..."
+}
+```
+
+Product create/update uses `ProductCreationRequest`: `name`, `sku`, `price`,
+`discountPrice`, `stockQuantity`, `description`, `specs`, `thumbnailUrl`,
+`storeId`, `categoryId`, `brandId`, `imageUrls`, and `variants`.
+
+Other request DTOs:
+
+- Profile update: `fullName`, `phone`, `avatarUrl`, `dateOfBirth`.
+- Address: `streetAddress`, `ward`, `district`, `city`, `isDefault`.
+- Review: `rating`, `comment`.
+- Category: `name`, `description`; brand: `name`.
+- Store update: `name`, `description`, `logoUrl`, `bannerUrl`, `contactPhone`,
+  `contactEmail`, `address`.
+- Order status: `status`; voucher: `voucherCode`.
+
+## Pagination and implementation notes
+
+- Backend now forces stable JSON for pageable responses via `@EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)` configured in `SpringDataWebConfig`. This guarantees consistent structure for `Page` objects across versions.
+- Endpoints that accept Spring `Pageable` use `page`, `size`, and `sort` query parameters. Product search and review listing also accept pageable parameters; order listing endpoints are paginated.
+- Product detail and product reviews use UUID parameters, while product detail-by-slug uses a slug. Do not interchange these identifiers.
+- Check `/v3/api-docs` before implementing a new call: it is the authoritative current contract, particularly for response fields and endpoint-specific access rules.
+
+## Landing page integration
+
+The home page uses `services/catalog-service.ts` for public catalog requests:
+
+- `GET /api/v1/products?page=0&size=24` supplies the product cards, hero
+  product, budget suggestion, and total product count.
+- `GET /api/v1/categories` supplies the category tiles.
+- The frontend reads the `result` from each API envelope and validates the
+  returned product-page/category shapes. It displays a loading state, and
+  surfaces request errors with a retry action.
+- API base URL defaults to `http://localhost:8080`. Set
+  `NEXT_PUBLIC_API_BASE_URL` when the backend runs at a different origin; the
+  backend CORS configuration must allow the frontend origin.
+- Product prices use `discountPrice` when it is a positive value below `price`;
+  otherwise they use `price`. The original price is shown as the crossed-out
+  price when discounted. Product fields and category names come from the API.
+- No local demo product list, demo imagery, fabricated review ratings, or
+  pre-filled sample cart is used by the landing page. When the API has no
+  product image, the page displays a neutral placeholder instead.
+- Previously saved rows from the prototype's seeded cart are removed when the
+  cart is loaded; new carts start empty.
+- The budget selector recommends an API product by its current price; it does
+  not assemble or configure a multi-part PC build. Add-to-cart still uses the
+  browser's local cart and is not wired to the backend cart endpoints.
+- The product listing (`/products`) and product detail (`/products/[slug]`)
+  experiences are integrated with the backend API via `services/catalog-service.ts`,
+  supporting dynamic slug routing, image galleries, live variants selection,
+  full specs tables, customer reviews, and related products recommendations.
+- Product detail data comes from the live product, review, and category-filtered
+  product endpoints. Missing slugs return the not-found page; API errors are not
+  replaced with demo product/review data. The API does not expose an aggregate
+  review rating or warranty/performance claims, so the detail page does not
+  invent those values.
+
+## User profile integration
+
+- `/profile` reads and updates the signed-in user's profile through
+  `GET`/`PUT /api/v1/users/me` using the saved access token from
+  `services/auth-service.ts`.
+- Editable fields are full name, phone, and date of birth. Email is read-only;
+  avatar URL, account activity, and roles are displayed when provided by the API.
+- Profile API fields are authoritative. Points, 2FA, active sessions, rigs,
+  order telemetry, gender, and member tier shown in the UI prototype are not
+  provided by the API and are not represented as real account data.
+- Sign-out posts the saved refresh token to
+  `POST /api/v1/auth/tokens/logout` and clears the local session after success.

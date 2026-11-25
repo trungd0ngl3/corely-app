@@ -112,6 +112,14 @@ export async function loginWithEmail(
   saveAuthSession(tokens, remember);
 }
 
+export function getGoogleLoginUrl(): string {
+  return `${API_BASE_URL}/oauth2/authorization/google`;
+}
+
+export function completeGoogleLogin(token: string, refreshToken: string): void {
+  saveAuthSession(readAuthResponse({ token, refreshToken }), false);
+}
+
 export async function registerWithEmail(input: {
   email: string;
   password: string;

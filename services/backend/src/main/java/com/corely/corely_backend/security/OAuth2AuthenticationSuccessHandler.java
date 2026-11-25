@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 
@@ -34,9 +35,11 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
         AuthenticateResponse tokens = jwtService.generateTokenPair(user);
 
-        String targetUrl = frontendUrl + "/auth/oauth2/redirect"
-                + "?token=" + tokens.getToken()
-                + "&refreshToken=" + tokens.getRefreshToken();
+        String targetUrl = UriComponentsBuilder.fromUriString(frontendUrl)
+                .path("/auth/oauth2/redirect")
+                .fragment("token={token}&refreshToken={refreshToken}")
+                .buildAndExpand(tokens.getToken(), tokens.getRefreshToken())
+                .toUriString();
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }

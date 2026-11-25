@@ -4330,7 +4330,8 @@ textarea:focus-visible {
   gap: 8px;
 }
 
-.account-socials button {
+.account-socials button,
+.account-social-link {
   min-height: 38px;
   display: flex;
   align-items: center;
@@ -4342,9 +4343,11 @@ textarea:focus-visible {
   font-size: 9px;
   cursor: pointer;
   transition: border-color .16s ease, background .16s ease;
+  text-decoration: none;
 }
 
-.account-socials button:hover {
+.account-socials button:hover,
+.account-social-link:hover {
   border-color: rgb(0 240 255 / 35%);
   background: #191f27;
 }

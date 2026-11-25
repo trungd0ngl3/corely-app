@@ -1,66 +1,54 @@
 spring:
-  datasource:
-    url: 
-    username: 
-    password: 
-    driver-class-name: 
-  mail:
-    host: 
-    port: 
-    username: 
-    password: 
-    
-    properties:
-      mail:
-        smtp:
-          auth: 
-          starttls:
-            enable: 
-            required: 
-          connectiontimeout: 
-          timeout: 
-          writetimeout: 
+  profiles:
+    active: dev
+
+  application:
+    name: corely-backend
+
   security:
     oauth2:
       client:
-        registration:
-          google:
-            client-id: 
-            client-secret: 
-            scope:
-              - email
-              - profile
-          facebook:
-            client-id: 
-            client-secret: 
-            scope:
-              - email
-              - public_profile
         provider:
           google:
-            authorization-uri: 
-            token-uri: 
-            user-info-uri: 
-            user-name-attribute: 
-          facebook:
-            authorization-uri: 
-            token-uri: 
-            user-info-uri: 
-            user-name-attribute: 
+            user-info-uri: https://www.googleapis.com/oauth2/v2/userinfo
+            user-name-attribute: id
 
-jwt:
-  signer-key: 
-  valid: 
-  valid-duration:  #sec
-  refreshable-duration: 
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
-cloudinary:
-  cloud-name: 
-  api-key: 
-  api-secret: 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 60000ms
+      jedis:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
 
-vnpayment:
-  tmnCode: 
-  hashSecret: 
-  payUrl: 
-  apiUrl: 
+
+
+app:
+  frontend-url: http://localhost:3000
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    min-response-size: 1024
+
+logging:
+  level:
+    root: INFO
+    com.corely: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

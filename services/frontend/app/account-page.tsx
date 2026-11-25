@@ -4,7 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { AuthApiError, loginWithEmail, registerWithEmail } from "@/services/auth-service";
+import {
+  AuthApiError,
+  getGoogleLoginUrl,
+  loginWithEmail,
+  registerWithEmail,
+} from "@/services/auth-service";
 import {
   ArrowRight,
   BadgeCheck,
@@ -457,17 +462,9 @@ export default function AccountPage({
 
           <div className="account-divider"><span /> HOẶC TIẾP TỤC VỚI <span /></div>
           <div className="account-socials">
-            <button
-              onClick={() =>
-                setNotice({
-                  message: "Đăng nhập Google chưa được kết nối với Corely ID.",
-                  type: "info",
-                })
-              }
-              type="button"
-            >
+            <a className="account-social-link" href={getGoogleLoginUrl()}>
               <span className="google-mark">G</span> Google
-            </button>
+            </a>
             <button
               onClick={() =>
                 setNotice({

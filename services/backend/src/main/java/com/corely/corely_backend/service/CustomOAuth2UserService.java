@@ -48,7 +48,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         if (GOOGLE.equals(provider)) {
             return OAuth2UserInfo.builder()
-                    .providerId(user.getAttribute("sub"))
+                    .providerId(user.getAttribute("id"))
                     .email(user.getAttribute("email"))
                     .name(user.getAttribute("name"))
                     .avatar(user.getAttribute("picture"))

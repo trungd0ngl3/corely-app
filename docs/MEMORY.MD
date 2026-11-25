@@ -64,6 +64,23 @@ versions.
   Other routes require authentication unless the backend grants access through
   a specific rule. Some write operations additionally require a role; for
   example, product creation, update, and deletion require `ADMIN` or `SELLER`.
+- Google and Facebook OAuth2 login routes are public:
+  `GET /oauth2/authorization/google` and
+  `GET /oauth2/authorization/facebook`.
+- OAuth2 success redirects to the frontend URL at
+  `/auth/oauth2/redirect#token=<access-token>&refreshToken=<refresh-token>`.
+  The frontend callback stores the tokens in `sessionStorage` and redirects to
+  `/`. Failure redirects to `/auth/oauth2/failed`.
+- The frontend OAuth buttons use `getGoogleLoginUrl()` and
+  `getFacebookLoginUrl()` in `services/auth-service.ts`.
+- The backend `CustomOAuth2UserService` maps Google (`id`, `email`, `name`,
+  `picture`) and Facebook (`id`, `email`, `name`, `picture.data.url`) accounts
+  through `AuthenticationService.processOAuth2User(...)`. OAuth2 registration
+  credentials and provider endpoints belong in the active Spring profile;
+  `application.yaml` currently contains the shared Google provider metadata,
+  while the development profile contains Google/Facebook client registrations.
+- `app.frontend-url` controls both the OAuth2 success/failure redirects and the
+  backend CORS allowed origin. Keep it aligned with the Next.js origin.
 - Most JSON endpoints use the envelope
   `{ "code": ..., "message": ..., "result": ... }`. Catalog reads currently
   return `code: 0`; other controller helpers may return `code: 1000`. Use the
@@ -92,6 +109,8 @@ versions.
 | POST | `/api/v1/auth/reset-password` | Reset password with token |
 | PATCH | `/api/v1/auth/change-password` | Change password |
 | GET, PUT, DELETE | `/api/v1/users/me` | Read, update, or delete current user |
+| GET | `/oauth2/authorization/{provider}` | Start Google or Facebook OAuth2 login |
+| GET | `/login/oauth2/code/{provider}` | OAuth2 callback handled by Spring Security |
 
 ### Products, categories, brands, and store
 
@@ -205,15 +224,6 @@ Other request DTOs:
 - Endpoints that accept Spring `Pageable` use `page`, `size`, and `sort` query parameters. Product search and review listing also accept pageable parameters; order listing endpoints are paginated.
 - Product detail and product reviews use UUID parameters, while product detail-by-slug uses a slug. Do not interchange these identifiers.
 - Check `/v3/api-docs` before implementing a new call: it is the authoritative current contract, particularly for response fields and endpoint-specific access rules.
-
-- Endpoints that accept Spring `Pageable` use `page`, `size`, and `sort`
-  query parameters. Product search and review listing also accept pageable
-  parameters; order listing endpoints are paginated.
-- Product detail and product reviews use UUID parameters, while product
-  detail-by-slug uses a slug. Do not interchange these identifiers.
-- Check `/v3/api-docs` before implementing a new call: it is the authoritative
-  current contract, particularly for response fields and endpoint-specific
-  access rules.
 
 ## Landing page integration
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, AlertCircle, ArrowRight, X } from "lucide-react";
 import { AUTH_SESSION_CHANGED_EVENT, getAuthSession } from "@/services/auth-service";
@@ -36,6 +37,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 function toMessage(error: unknown): string { return error instanceof Error ? error.message : "Không thể cập nhật giỏ hàng. Vui lòng thử lại."; }
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [items, setItems] = useState<CartLine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -78,18 +80,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
       await reloadCart();
       return true;
     } catch (requestError) {
+      const isAuthError =
+        (requestError instanceof CartApiError && requestError.status === 401) ||
+        toMessage(requestError).toLowerCase().includes("đăng nhập");
+      if (isAuthError) {
+        // Redirect to login, preserving current page as redirect target
+        const redirect = typeof window !== "undefined" ? window.location.pathname : "/";
+        router.push(`/login?redirect=${encodeURIComponent(redirect)}`);
+        return false;
+      }
       const msg = toMessage(requestError);
       setError(msg);
-      const isAuthError = msg.toLowerCase().includes("đăng nhập") || (requestError instanceof CartApiError && requestError.status === 401);
       showToast({
         type: "error",
-        title: isAuthError ? "Cần đăng nhập" : "Không thể thêm vào giỏ",
+        title: "Không thể thêm vào giỏ",
         message: msg,
-        action: isAuthError ? { label: "Đăng nhập ngay", href: "/profile" } : undefined,
       });
       return false;
     }
-  }, [reloadCart, showToast]);
+  }, [reloadCart, router, showToast]);
 
   const value = useMemo<CartContextValue>(() => ({
     items,

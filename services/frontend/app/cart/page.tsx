@@ -2,14 +2,23 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Cpu, Heart, Minus, Plus, ShieldCheck, Trash2, Truck } from "lucide-react";
 import { useCart } from "@/components/storefront-provider";
+import { getAuthSession } from "@/services/auth-service";
 import { formatVnd, products } from "@/lib/store-data";
 import { ProductCard } from "@/components/product-card";
 
 export default function CartPage() {
+  const router = useRouter();
   const { items, itemCount, isLoading, error, removeItem, removeItems, setQuantity } = useCart();
+
+  useEffect(() => {
+    if (!getAuthSession()) {
+      router.replace("/login?redirect=/cart");
+    }
+  }, [router]);
   const [selectedIds, setSelectedIds] = useState<Set<string> | null>(null);
 
   const isSelected = (id: string) => selectedIds === null || selectedIds.has(id);

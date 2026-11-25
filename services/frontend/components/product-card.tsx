@@ -16,6 +16,8 @@ export function ProductCard({
 }) {
   const { addItem } = useCart();
   const [favorite, setFavorite] = useState(false);
+  const catalogProduct = "variants" in product;
+  const requiresVariantSelection = catalogProduct && product.variants.length > 0;
 
   return (
     <article className="product-card">
@@ -50,14 +52,8 @@ export function ProductCard({
           <button
             aria-label={`Thêm ${product.name} vào giỏ hàng`}
             className="add-cart-icon"
-            onClick={() => addItem({
-              productId: product.id,
-              slug: (product as any).slug,
-              title: product.name,
-              variant: "Cấu hình tiêu chuẩn",
-              price: product.price,
-              image: product.image ?? "",
-            })}
+            disabled={!catalogProduct || requiresVariantSelection}
+            onClick={() => { void addItem({ productId: product.id }); }}
             type="button"
           >
             <ShoppingCart size={17} />

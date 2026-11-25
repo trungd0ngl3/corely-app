@@ -68,22 +68,15 @@ export function ProductDetailView({
   const activeImageUrl =
     selectedVariant?.image || allImages[activeImageIndex] || product.image;
 
-  function handleAddToCart() {
+  async function handleAddToCart() {
     if (isOutOfStock) return;
-    const variantName = selectedVariant
-      ? selectedVariant.name
-      : "Cấu hình tiêu chuẩn";
-
-    addItem({
+    const added = await addItem({
       productId: product.id,
-      slug: product.slug,
-      title: product.name,
-      variant: variantName,
-      price: currentPrice,
-      image: activeImageUrl || "",
+      variantId: selectedVariantId ?? undefined,
       quantity,
     });
 
+    if (!added) return;
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 2500);
   }
@@ -275,7 +268,7 @@ export function ProductDetailView({
             <button
               className="button-primary"
               disabled={isUnavailable}
-              onClick={handleAddToCart}
+              onClick={() => { void handleAddToCart(); }}
               type="button"
             >
               <ShoppingCart size={17} />{" "}

@@ -27,6 +27,11 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 const SESSION_STORAGE_KEY = "corely-auth-v1";
 const REMEMBERED_SESSION_TTL = 30 * 24 * 60 * 60 * 1000;
+export const AUTH_SESSION_CHANGED_EVENT = "corely-auth-session-changed";
+
+function notifySessionChanged() {
+  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -97,6 +102,7 @@ function saveAuthSession(tokens: AuthResponse, remember: boolean) {
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
     window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
     storage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    notifySessionChanged();
   } catch {
     throw new Error("Đăng nhập thành công nhưng không thể lưu phiên trên trình duyệt này.");
   }
@@ -191,4 +197,5 @@ export async function logoutFromCurrentSession(): Promise<void> {
 
   window.localStorage.removeItem(SESSION_STORAGE_KEY);
   window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  notifySessionChanged();
 }

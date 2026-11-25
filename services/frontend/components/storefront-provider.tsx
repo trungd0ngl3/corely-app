@@ -1,163 +1,83 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useMemo,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { AUTH_SESSION_CHANGED_EVENT, getAuthSession } from "@/services/auth-service";
+import { addCartItem, clearCart as clearRemoteCart, fetchCart, removeCartItem, type CartItem, updateCartItem } from "@/services/cart-service";
 
-export type CartLine = {
-  id: string;
-  productId: string;
-  slug?: string;
-  title: string;
-  variant: string;
-  price: number;
-  quantity: number;
-  image: string;
-};
+export type CartLine = CartItem;
 
 type CartContextValue = {
   items: CartLine[];
   itemCount: number;
   subtotal: number;
-  addItem: (line: Omit<CartLine, "id" | "quantity"> & { quantity?: number }) => void;
-  setQuantity: (id: string, quantity: number) => void;
-  removeItem: (id: string) => void;
-  removeItems: (ids: string[]) => void;
-  clearCart: () => void;
+  isLoading: boolean;
+  error?: string;
+  addItem: (line: { productId: string; variantId?: string; quantity?: number }) => Promise<boolean>;
+  setQuantity: (id: string, quantity: number) => Promise<boolean>;
+  removeItem: (id: string) => Promise<boolean>;
+  removeItems: (ids: string[]) => Promise<boolean>;
+  clearCart: () => Promise<boolean>;
+  reloadCart: () => Promise<void>;
 };
 
-const STORAGE_KEY = "corely-cart-v1";
-const initialItems: CartLine[] = [];
-const prototypeCartItemIds = new Set([
-  "apex-cyberpunk-standard",
-  "rog-monitor",
-  "strike-keyboard",
-]);
-
-function isCartLine(value: unknown): value is CartLine {
-  if (!value || typeof value !== "object") return false;
-  const line = value as Record<string, unknown>;
-  return (
-    typeof line.id === "string" &&
-    typeof line.productId === "string" &&
-    typeof line.title === "string" &&
-    typeof line.variant === "string" &&
-    typeof line.price === "number" &&
-    typeof line.quantity === "number" &&
-    typeof line.image === "string" &&
-    (line.slug === undefined || typeof line.slug === "string")
-  );
-}
-
-let cartSnapshot = initialItems;
-let cartLoaded = false;
-const cartSubscribers = new Set<() => void>();
-
-function loadCart() {
-  if (cartLoaded || typeof window === "undefined") return;
-  cartLoaded = true;
-  try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved === null) return;
-    const parsed: unknown = JSON.parse(saved);
-    if (Array.isArray(parsed) && parsed.every(isCartLine)) {
-      cartSnapshot = parsed.filter((item) => !prototypeCartItemIds.has(item.id));
-      if (cartSnapshot.length !== parsed.length) {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cartSnapshot));
-      }
-    } else {
-      console.error("Saved cart data is invalid; ignoring the saved cart.");
-    }
-  } catch (error) {
-    console.error("Could not restore the saved cart.", error);
-  }
-}
-
-function getCartSnapshot() {
-  loadCart();
-  return cartSnapshot;
-}
-
-function getServerCartSnapshot() {
-  return initialItems;
-}
-
-function subscribeToCart(listener: () => void) {
-  cartSubscribers.add(listener);
-  return () => cartSubscribers.delete(listener);
-}
-
-function updateCart(updater: (items: CartLine[]) => CartLine[]) {
-  cartSnapshot = updater(cartSnapshot);
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cartSnapshot));
-  } catch (error) {
-    console.error("Could not save the cart in this browser.", error);
-  }
-  cartSubscribers.forEach((listener) => listener());
-}
-
 const CartContext = createContext<CartContextValue | null>(null);
+function toMessage(error: unknown): string { return error instanceof Error ? error.message : "Không thể cập nhật giỏ hàng. Vui lòng thử lại."; }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const items = useSyncExternalStore(
-    subscribeToCart,
-    getCartSnapshot,
-    getServerCartSnapshot,
-  );
+  const [items, setItems] = useState<CartLine[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string>();
 
-  const value = useMemo<CartContextValue>(() => {
-    const addItem: CartContextValue["addItem"] = (line) => {
-      updateCart((current) => {
-        const addQty = typeof line.quantity === "number" && line.quantity > 0
-          ? line.quantity
-          : 1;
-        const existing = current.find(
-          (item) => item.productId === line.productId && item.variant === line.variant,
-        );
-        if (existing) {
-          return current.map((item) =>
-            item.id === existing.id
-              ? { ...item, quantity: item.quantity + addQty }
-              : item,
-          );
-        }
-        return [...current, { ...line, id: `${line.productId}-${Date.now()}`, quantity: addQty }];
-      });
-    };
+  const reloadCart = useCallback(async () => {
+    if (!getAuthSession()) { setItems([]); setError(undefined); setIsLoading(false); return; }
+    setIsLoading(true);
+    try { const cart = await fetchCart(); setItems(cart.items); setError(undefined); }
+    catch (requestError) { setItems([]); setError(toMessage(requestError)); }
+    finally { setIsLoading(false); }
+  }, []);
 
-    return {
-      items,
-      itemCount: items.reduce((count, item) => count + item.quantity, 0),
-      subtotal: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-      addItem,
-      setQuantity: (id, quantity) =>
-        updateCart((current) =>
-          current.map((item) =>
-            item.id === id
-              ? { ...item, quantity: Math.max(1, Math.floor(quantity)) }
-              : item,
-          ),
-        ),
-      removeItem: (id) =>
-        updateCart((current) => current.filter((item) => item.id !== id)),
-      removeItems: (ids) =>
-        updateCart((current) => current.filter((item) => !ids.includes(item.id))),
-      clearCart: () => updateCart(() => []),
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => { void reloadCart(); }, 0);
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, reloadCart);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, reloadCart);
     };
-  }, [items]);
+  }, [reloadCart]);
+
+  const runMutation = useCallback(async (operation: () => Promise<void>) => {
+    try { await operation(); await reloadCart(); return true; }
+    catch (requestError) { setError(toMessage(requestError)); return false; }
+  }, [reloadCart]);
+
+  const value = useMemo<CartContextValue>(() => ({
+    items,
+    itemCount: items.reduce((count, item) => count + item.quantity, 0),
+    subtotal: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    isLoading,
+    error,
+    reloadCart,
+    addItem: (line) => runMutation(() => addCartItem({ ...line, quantity: line.quantity ?? 1 })),
+    setQuantity: (id, quantity) => {
+      const item = items.find((line) => line.id === id);
+      return item ? runMutation(() => updateCartItem({ productId: item.productId, variantId: item.variantId, quantity })) : Promise.resolve(false);
+    },
+    removeItem: (id) => {
+      const item = items.find((line) => line.id === id);
+      return item ? runMutation(() => removeCartItem(item.productId, item.variantId)) : Promise.resolve(false);
+    },
+    removeItems: (ids) => runMutation(async () => {
+      const selected = items.filter((item) => ids.includes(item.id));
+      await Promise.all(selected.map((item) => removeCartItem(item.productId, item.variantId)));
+    }),
+    clearCart: () => runMutation(clearRemoteCart),
+  }), [error, isLoading, items, reloadCart, runMutation]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {
   const context = useContext(CartContext);
-  if (!context) {
-    throw new Error("useCart must be used within a CartProvider");
-  }
+  if (!context) throw new Error("useCart must be used within a CartProvider");
   return context;
 }

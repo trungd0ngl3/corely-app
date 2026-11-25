@@ -9,7 +9,7 @@ import { formatVnd, products } from "@/lib/store-data";
 import { ProductCard } from "@/components/product-card";
 
 export default function CartPage() {
-  const { items, itemCount, removeItem, removeItems, setQuantity } = useCart();
+  const { items, itemCount, isLoading, error, removeItem, removeItems, setQuantity } = useCart();
   const [selectedIds, setSelectedIds] = useState<Set<string> | null>(null);
 
   const isSelected = (id: string) => selectedIds === null || selectedIds.has(id);
@@ -26,10 +26,12 @@ export default function CartPage() {
     <div className="store-wrap cart-page">
       <div className="breadcrumbs"><Link href="/">Trang chủ</Link><span>/</span><span>Giỏ hàng</span></div>
       <div className="cart-heading"><div><div className="eyebrow"><span className="eyebrow-line" /> YOUR BUILD / REVIEW</div><h1 className="section-title">Giỏ hàng <span>của bạn.</span></h1><p>{itemCount} sản phẩm đang chờ bạn hoàn thiện cấu hình.</p></div><Link className="button-quiet" href="/products"><ArrowLeft size={16} /> Tiếp tục mua sắm</Link></div>
+      {error && <p className="section-copy" role="alert">{error}</p>}
+      {isLoading && <p aria-live="polite" className="section-copy" role="status">Đang tải giỏ hàng...</p>}
       {items.length ? (
         <div className="cart-layout">
           <section className="cart-items-panel">
-            <div className="cart-select-all"><label><input checked={allSelected} onChange={(event) => setAllSelected(event.target.checked)} type="checkbox" /> Chọn tất cả ({items.length} sản phẩm)</label><button disabled={!selectedItems.length} onClick={() => removeItems(selectedItems.map((item) => item.id))} type="button"><Trash2 size={15} /> Xóa mục đã chọn</button></div>
+            <div className="cart-select-all"><label><input checked={allSelected} onChange={(event) => setAllSelected(event.target.checked)} type="checkbox" /> Chọn tất cả ({items.length} sản phẩm)</label><button disabled={!selectedItems.length} onClick={() => { void removeItems(selectedItems.map((item) => item.id)); }} type="button"><Trash2 size={15} /> Xóa mục đã chọn</button></div>
             <div className="cart-lines">{items.map((item) => (
               <article className="cart-line" key={item.id}>
                 <input aria-label={`Chọn ${item.title}`} checked={isSelected(item.id)} onChange={(event) => setSelectedIds((current) => {
@@ -38,9 +40,9 @@ export default function CartPage() {
                   else next.delete(item.id);
                   return next.size === items.length ? null : next;
                 })} type="checkbox" />
-                <Link className="cart-line-image" href={item.slug ? `/products/${item.slug}` : (item.productId === "apex-cyberpunk" ? "/products/apex-cyberpunk" : "/products")}>{item.image ? <Image alt={item.title} height={240} src={item.image} unoptimized width={260} /> : <Cpu aria-hidden="true" size={38} strokeWidth={0.8} />}</Link>
-                <div className="cart-line-info"><span className="product-category">CORELY / {item.productId.toUpperCase()}</span><Link href={item.slug ? `/products/${item.slug}` : (item.productId === "apex-cyberpunk" ? "/products/apex-cyberpunk" : "/products")}>{item.title}</Link><small>{item.variant}</small><div className="cart-line-stock"><i /> CÒN HÀNG · SẴN SÀNG GIAO</div></div>
-                <div className="cart-line-controls"><div className="quantity-control"><button aria-label={`Giảm số lượng ${item.title}`} disabled={item.quantity <= 1} onClick={() => setQuantity(item.id, item.quantity - 1)} type="button"><Minus size={13} /></button><span>{item.quantity}</span><button aria-label={`Tăng số lượng ${item.title}`} onClick={() => setQuantity(item.id, item.quantity + 1)} type="button"><Plus size={13} /></button></div><b>{formatVnd(item.price * item.quantity)}</b><div className="cart-line-actions"><button aria-label={`Lưu ${item.title} vào danh sách yêu thích`} type="button"><Heart size={15} /> Lưu để mua sau</button><button aria-label={`Xóa ${item.title}`} onClick={() => removeItem(item.id)} type="button"><Trash2 size={15} /> Xóa</button></div></div>
+                <Link className="cart-line-image" href="/products">{item.image ? <Image alt={item.title} height={240} src={item.image} unoptimized width={260} /> : <Cpu aria-hidden="true" size={38} strokeWidth={0.8} />}</Link>
+                <div className="cart-line-info"><span className="product-category">CORELY / {item.productId.toUpperCase()}</span><Link href="/products">{item.title}</Link><small>{item.variant}</small><div className="cart-line-stock"><i /> {item.inStock ? "CÒN HÀNG · SẴN SÀNG GIAO" : "TẠM HẾT HÀNG"}</div></div>
+                <div className="cart-line-controls"><div className="quantity-control"><button aria-label={`Giảm số lượng ${item.title}`} disabled={item.quantity <= 1} onClick={() => { void setQuantity(item.id, item.quantity - 1); }} type="button"><Minus size={13} /></button><span>{item.quantity}</span><button aria-label={`Tăng số lượng ${item.title}`} disabled={!item.inStock || (item.availableStock !== undefined && item.quantity >= item.availableStock)} onClick={() => { void setQuantity(item.id, item.quantity + 1); }} type="button"><Plus size={13} /></button></div><b>{formatVnd(item.price * item.quantity)}</b><div className="cart-line-actions"><button aria-label={`Lưu ${item.title} vào danh sách yêu thích`} type="button"><Heart size={15} /> Lưu để mua sau</button><button aria-label={`Xóa ${item.title}`} onClick={() => { void removeItem(item.id); }} type="button"><Trash2 size={15} /> Xóa</button></div></div>
               </article>
             ))}</div>
             <div className="cart-assurance"><span><ShieldCheck size={17} /> Tất cả sản phẩm đều chính hãng và được bảo hành theo tiêu chuẩn Corely.</span><span><Truck size={17} /> Đóng gói chống sốc, giao hàng an tâm toàn quốc.</span></div>

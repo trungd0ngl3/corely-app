@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AuthApiError, loginWithEmail, registerWithEmail } from "@/services/auth-service";
 import {
@@ -89,6 +90,7 @@ export default function AccountPage({
 }: {
   initialMode: AccountMode;
 }) {
+  const router = useRouter();
   const [mode, setMode] = useState(initialMode);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
@@ -108,10 +110,7 @@ export default function AccountPage({
 
     try {
       await loginWithEmail(email, password, remember);
-      setNotice({
-        message: "Đăng nhập thành công. Phiên của bạn đã được lưu.",
-        type: "success",
-      });
+      router.replace("/");
     } catch (error) {
       setNotice({
         message: getAuthErrorMessage(error, "Không thể đăng nhập. Vui lòng thử lại."),

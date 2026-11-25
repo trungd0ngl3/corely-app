@@ -248,3 +248,16 @@ The home page uses `services/catalog-service.ts` for public catalog requests:
   replaced with demo product/review data. The API does not expose an aggregate
   review rating or warranty/performance claims, so the detail page does not
   invent those values.
+
+## User profile integration
+
+- `/profile` reads and updates the signed-in user's profile through
+  `GET`/`PUT /api/v1/users/me` using the saved access token from
+  `services/auth-service.ts`.
+- Editable fields are full name, phone, and date of birth. Email is read-only;
+  avatar URL, account activity, and roles are displayed when provided by the API.
+- Profile API fields are authoritative. Points, 2FA, active sessions, rigs,
+  order telemetry, gender, and member tier shown in the UI prototype are not
+  provided by the API and are not represented as real account data.
+- Sign-out posts the saved refresh token to
+  `POST /api/v1/auth/tokens/logout` and clears the local session after success.

@@ -161,3 +161,22 @@ export function getAuthSession(): AuthSession | undefined {
     expiresAt: value.expiresAt,
   };
 }
+
+export async function logoutFromCurrentSession(): Promise<void> {
+  const session = getAuthSession();
+  if (!session) return;
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/tokens/logout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: session.refreshToken }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new AuthApiError(`Logout failed (${response.status}).`);
+  }
+
+  window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+}

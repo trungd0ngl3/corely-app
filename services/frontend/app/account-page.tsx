@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import {
   AuthApiError,
+  getFacebookLoginUrl,
   getGoogleLoginUrl,
   loginWithEmail,
   registerWithEmail,
@@ -465,17 +466,9 @@ export default function AccountPage({
             <a className="account-social-link" href={getGoogleLoginUrl()}>
               <span className="google-mark">G</span> Google
             </a>
-            <button
-              onClick={() =>
-                setNotice({
-                  message: "Đăng nhập Facebook chưa được kết nối với Corely ID.",
-                  type: "info",
-                })
-              }
-              type="button"
-            >
+            <a className="account-social-link" href={getFacebookLoginUrl()}>
               <span className="facebook-mark">f</span> Facebook
-            </button>
+            </a>
           </div>
 
           <p className="account-security-note">

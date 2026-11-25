@@ -38,7 +38,7 @@ export default function GoogleLoginCallback() {
   return (
     <div className="store-wrap">
       <section aria-live="polite" className="mx-auto max-w-lg py-16 text-center">
-        <p role="status">Đang hoàn tất đăng nhập Google...</p>
+        <p role="status">Đang hoàn tất đăng nhập mạng xã hội...</p>
       </section>
     </div>
   );
